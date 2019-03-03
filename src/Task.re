@@ -11,6 +11,11 @@ type computation('error, 'value) = ('error => unit, 'value => unit) => cancel;
 type task('rej, 'res) =
     | Task(computation('rej, 'res));
 
+type taskState('r, 's) =
+  | Todo
+  | Active
+  | Resolved(status('r, 's))
+
 let run = (onResponse, Task(task)) => {
     let openend = ref(true);
     let rejection = err => if(openend^){
@@ -119,6 +124,47 @@ let timeout = value => Task((rej, res) => {
   Cancel(() => Js.Global.clearTimeout(timer))
 })
 
+let parallel = concurrentTasks => Task((rej, res) => {
+  let count = ref(0)
+  let tasksLength = concurrentTasks |> Array.length
+  let responses = Array.make(tasksLength, Todo)
+  let cancelFns = Array.make(tasksLength, NoCancel)
+  concurrentTasks |> Array.iteri(
+    (i, Task(task)) => {
+      let reject = err => {
+        Resolved(Rejection(err)) |> Array.set(responses, i)
+        responses |> Array.iteri(
+          (j, state) =>
+            switch state {
+            | Active =>
+              switch (Array.get(cancelFns, j)) {
+              | Cancel(c) => c()
+              | NoCancel => ()
+              }
+            | Todo => ()
+            | Resolved(_) => ()
+            }
+        );
+        rej(Rejection(err));
+      }
+      let resolved = value => {
+        Resolved(Success(value)) |> Array.set(responses, i)
+        count := count^ + 1
+        if(count^ === tasksLength) {
+
+        }
+      }
+
+      task(
+        reject,
+        resolved
+      )
+    }
+  )
+
+  let cancel = () => ()
+  Cancel(cancel)
+})
 let unsubscribe = identity(5000)
   >==< (x => identity(x * 5000))
   <@> (x => x + 300)
