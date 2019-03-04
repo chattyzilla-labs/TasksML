@@ -6,6 +6,7 @@ var Block = require("bs-platform/lib/js/block.js");
 var Curry = require("bs-platform/lib/js/curry.js");
 var Queue = require("bs-platform/lib/js/queue.js");
 var Caml_int32 = require("bs-platform/lib/js/caml_int32.js");
+var Pervasives = require("bs-platform/lib/js/pervasives.js");
 
 function run(onResponse, param) {
   var openend = /* record */[/* contents */true];
@@ -127,6 +128,13 @@ function identity(value) {
             })];
 }
 
+function reject(value) {
+  return /* Task */[(function (rej, param) {
+              Curry._1(rej, value);
+              return /* NoCancel */0;
+            })];
+}
+
 var Operators = /* module */[
   /* >==< */chain,
   /* <@> */map,
@@ -189,10 +197,7 @@ function parallel(concurrentTasks) {
                                       if (match) {
                                         return onResponse(value);
                                       } else {
-                                        return Queue.add(/* tuple */[
-                                                    value,
-                                                    onResponse
-                                                  ], syncQueue);
+                                        return Queue.add(value, syncQueue);
                                       }
                                     }), map(task, (function (value) {
                                           return /* tuple */[
@@ -206,8 +211,7 @@ function parallel(concurrentTasks) {
                     }), concurrentTasks);
               async[0] = true;
               while(!Queue.is_empty(syncQueue) && !rejected[0]) {
-                var match = Queue.take(syncQueue);
-                Curry._1(match[1], match[0]);
+                onResponse(Queue.take(syncQueue));
               };
               return /* Cancel */[(function (param) {
                           return List.iter((function (task) {
@@ -220,7 +224,8 @@ function parallel(concurrentTasks) {
 function timeout(value) {
   return /* Task */[(function (rej, res) {
               var timer = setTimeout((function (param) {
-                      return Curry._1(rej, value);
+                      console.log(value);
+                      return Curry._1(res, value);
                     }), 1000);
               return /* Cancel */[(function (param) {
                           clearTimeout(timer);
@@ -228,6 +233,62 @@ function timeout(value) {
                         })];
             })];
 }
+
+function notTimeout(value) {
+  return /* Task */[(function (rej, res) {
+              console.log(value);
+              Curry._1(res, value);
+              return /* NoCancel */0;
+            })];
+}
+
+var p = run((function (param) {
+        console.log(param[0]);
+        return /* () */0;
+      }), parallel(Pervasives.$at(List.map(timeout, /* :: */[
+                  1,
+                  /* :: */[
+                    2,
+                    /* :: */[
+                      3,
+                      /* :: */[
+                        4,
+                        /* :: */[
+                          5,
+                          /* :: */[
+                            6,
+                            /* :: */[
+                              7,
+                              /* :: */[
+                                8,
+                                /* :: */[
+                                  9,
+                                  /* [] */0
+                                ]
+                              ]
+                            ]
+                          ]
+                        ]
+                      ]
+                    ]
+                  ]
+                ]), /* :: */[
+              chain(/* Task */[(function (rej, res) {
+                        console.log(10);
+                        Curry._1(res, 10);
+                        return /* NoCancel */0;
+                      })], reject),
+              /* :: */[
+                timeout(11),
+                /* :: */[
+                  timeout(12),
+                  /* :: */[
+                    timeout(13),
+                    /* [] */0
+                  ]
+                ]
+              ]
+            ])));
 
 var unsubscribe = run((function (param) {
         if (param.tag) {
@@ -252,14 +313,19 @@ var unsubscribe = run((function (param) {
             return String(prim);
           })));
 
+setTimeout(p, 500);
+
 exports.run = run;
 exports.chain = chain;
 exports.chainRej = chainRej;
 exports.map = map;
 exports.mapRej = mapRej;
 exports.identity = identity;
+exports.reject = reject;
 exports.Operators = Operators;
 exports.parallel = parallel;
 exports.timeout = timeout;
+exports.notTimeout = notTimeout;
+exports.p = p;
 exports.unsubscribe = unsubscribe;
-/* unsubscribe Not a pure module */
+/* p Not a pure module */

@@ -110,6 +110,7 @@ let mapRej = (task, fn) =>  Task(
 )
 
 let identity = value => Task((_, res) => { res(value); NoCancel})
+let reject = value => Task((rej, _) => { rej(value); NoCancel})
 
 module Operators = {
   let (>==<) = chain
@@ -120,7 +121,7 @@ module Operators = {
 
 open Operators
 
-// Todo update to control the amount of task run in parrallel 
+// Todo update to control the amount of task run in parrallel
 let parallel = concurrentTasks => Task(
     (rej, res) => {
         let responses = ref([])
@@ -146,10 +147,10 @@ let parallel = concurrentTasks => Task(
                 rejected := true
                 rej(err)
             }
-        
+
         hotTask := concurrentTasks |> List.mapi(
             (index, task) => {
-                cancel: task <@> (value => (index, value)) |> run(value => async^ ? onResponse(value) : Queue.add((value, onResponse), syncQueue)),
+                cancel: task <@> (value => (index, value)) |> run(value => async^ ? onResponse(value) : Queue.add(value, syncQueue)),
                 resolved: false,
                 index,
             }
@@ -158,8 +159,8 @@ let parallel = concurrentTasks => Task(
         async := true
 
         while (!Queue.is_empty(syncQueue) && !rejected^){
-            let (value, cb) = Queue.take(syncQueue)
-            cb(value)
+            let value = Queue.take(syncQueue)
+            onResponse(value)
         }
 
         Cancel(() => hotTask^ |> List.iter(task => task.cancel()))
@@ -167,9 +168,17 @@ let parallel = concurrentTasks => Task(
 )
 
 let timeout = value => Task((rej, res) => {
-  let timer = Js.Global.setTimeout(() => rej(value), 1000)
+  let timer = Js.Global.setTimeout(() => {Js.log(value); res(value)}, 1000)
   Cancel(() => Js.Global.clearTimeout(timer))
 })
+let notTimeout = value => Task((rej, res) => {
+  Js.log(value)
+  res(value)
+  NoCancel
+})
+let p = ([1, 2, 3, 4, 5, 6, 7, 8, 9] |> List.map(timeout)) @ [notTimeout(10) >==< reject, timeout(11), timeout(12), timeout(13)]
+        |> parallel
+        |> run(fun | Rejection(v) => Js.log(v) | Success(s) => Js.log(s))
 let unsubscribe = identity(5000)
   >==< (x => identity(x * 5000))
   <@> (x => x + 300)
@@ -177,7 +186,7 @@ let unsubscribe = identity(5000)
   <!@!> string_of_int
   // <!!> identity
   |> run(fun | Rejection(v) => Js.log(v ++ " there was an error") | Success(s) => Js.log(s))
-//Js.Global.setTimeout(unsubscribe, 1500)
+Js.Global.setTimeout(p, 500)
 // todo
 // encaseP, encaseN, after, race, stack saftey
 
