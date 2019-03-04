@@ -16,3 +16,6 @@ npm run start
 
 # Editor
 If you use `vscode`, Press `Windows + Shift + B` it will build automatically
+
+# Note
+code works but still in early stages. function names may change and operators may change.
