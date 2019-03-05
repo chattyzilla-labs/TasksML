@@ -170,6 +170,7 @@ let timeout = value => Task((rej, res) => {
   let timer = Js.Global.setTimeout(() => rej(value), 1000)
   Cancel(() => Js.Global.clearTimeout(timer))
 })
+
 let unsubscribe = identity(5000)
   >==< (x => identity(x * 5000))
   <@> (x => x + 300)
