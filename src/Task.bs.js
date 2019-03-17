@@ -2,10 +2,12 @@
 'use strict';
 
 var List = require("bs-platform/lib/js/list.js");
+var $$Array = require("bs-platform/lib/js/array.js");
 var Block = require("bs-platform/lib/js/block.js");
 var Curry = require("bs-platform/lib/js/curry.js");
 var Queue = require("bs-platform/lib/js/queue.js");
-var Caml_int32 = require("bs-platform/lib/js/caml_int32.js");
+var Caml_array = require("bs-platform/lib/js/caml_array.js");
+var Pervasives = require("bs-platform/lib/js/pervasives.js");
 
 function run(onResponse, param) {
   var openend = /* record */[/* contents */true];
@@ -60,6 +62,53 @@ function chain(task, fn) {
                 }
               };
               cancelFn[0] = run(onResponse, task);
+              return /* Cancel */[(function (param) {
+                          return Curry._1(cancelFn[0], /* () */0);
+                        })];
+            })];
+}
+
+function chainRec(recTask, init) {
+  return /* Task */[(function (rej, res) {
+              var cancelFn = /* record */[/* contents */(function (param) {
+                    return /* () */0;
+                  })];
+              var currentValue = /* record */[/* contents */init];
+              var async = /* record */[/* contents */false];
+              var settled = /* record */[/* contents */false];
+              var drain = function (param) {
+                var $$break = false;
+                async[0] = false;
+                while(!$$break) {
+                  settled[0] = false;
+                  cancelFn[0] = run(onResponse, Curry._1(recTask, currentValue[0]));
+                  if (!settled[0]) {
+                    async[0] = true;
+                    $$break = true;
+                  }
+                  
+                };
+                return /* () */0;
+              };
+              var onResponse = function (status) {
+                if (status.tag) {
+                  var value = status[0];
+                  if (value.tag) {
+                    return Curry._1(res, value[0]);
+                  } else {
+                    currentValue[0] = value[0];
+                    if (async[0]) {
+                      return drain(/* () */0);
+                    } else {
+                      settled[0] = true;
+                      return /* () */0;
+                    }
+                  }
+                } else {
+                  return Curry._1(rej, status[0]);
+                }
+              };
+              drain(/* () */0);
               return /* Cancel */[(function (param) {
                           return Curry._1(cancelFn[0], /* () */0);
                         })];
@@ -127,6 +176,13 @@ function identity(value) {
             })];
 }
 
+function reject(value) {
+  return /* Task */[(function (rej, param) {
+              Curry._1(rej, value);
+              return /* NoCancel */0;
+            })];
+}
+
 var Operators = /* module */[
   /* >==< */chain,
   /* <@> */map,
@@ -136,63 +192,44 @@ var Operators = /* module */[
 
 function parallel(concurrentTasks) {
   return /* Task */[(function (rej, res) {
-              var responses = /* record */[/* contents : [] */0];
-              var hotTask = /* record */[/* contents : [] */0];
+              var taskSize = List.length(concurrentTasks);
+              var responses = /* record */[/* contents : array */[]];
+              var hotTask = /* record */[/* contents : array */[]];
               var rejected = /* record */[/* contents */false];
               var syncQueue = Queue.create(/* () */0);
               var async = /* record */[/* contents */false];
               var onResponse = function (param) {
                 if (param.tag) {
-                  var value = param[0];
-                  responses[0] = /* :: */[
-                    value,
-                    responses[0]
-                  ];
-                  hotTask[0] = List.map((function (task) {
-                          var match = task[/* index */2] === value[0];
-                          if (match) {
-                            return /* record */[
-                                    /* cancel */task[/* cancel */0],
-                                    /* resolved */true,
-                                    /* index */task[/* index */2]
-                                  ];
-                          } else {
-                            return task;
-                          }
-                        }), hotTask[0]);
-                  if (List.for_all((function (task) {
-                            return task[/* resolved */1];
-                          }), hotTask[0])) {
-                    var response = List.map((function (prim) {
-                            return prim[1];
-                          }), List.sort((function (a, b) {
-                                return a[0] - b[0] | 0;
+                  responses[0] = $$Array.append(responses[0], /* array */[param[0]]);
+                  if (responses[0].length === taskSize) {
+                    $$Array.sort((function (a, b) {
+                            return a[0] - b[0] | 0;
+                          }), responses[0]);
+                    var response = $$Array.to_list($$Array.map((function (prim) {
+                                return prim[1];
                               }), responses[0]));
-                    hotTask[0] = /* [] */0;
+                    hotTask[0] = /* array */[];
                     return Curry._1(res, response);
                   } else {
                     return 0;
                   }
                 } else {
-                  List.iter((function (task) {
+                  $$Array.iter((function (task) {
                           return Curry._1(task[/* cancel */0], /* () */0);
                         }), hotTask[0]);
-                  hotTask[0] = /* [] */0;
+                  hotTask[0] = /* array */[];
                   rejected[0] = true;
                   return Curry._1(rej, param[0]);
                 }
               };
-              hotTask[0] = List.mapi((function (index, task) {
+              hotTask[0] = $$Array.mapi((function (index, task) {
                       return /* record */[
                               /* cancel */run((function (value) {
                                       var match = async[0];
                                       if (match) {
                                         return onResponse(value);
                                       } else {
-                                        return Queue.add(/* tuple */[
-                                                    value,
-                                                    onResponse
-                                                  ], syncQueue);
+                                        return Queue.add(value, syncQueue);
                                       }
                                     }), map(task, (function (value) {
                                           return /* tuple */[
@@ -200,17 +237,15 @@ function parallel(concurrentTasks) {
                                                   value
                                                 ];
                                         }))),
-                              /* resolved */false,
                               /* index */index
                             ];
-                    }), concurrentTasks);
+                    }), $$Array.of_list(concurrentTasks));
               async[0] = true;
               while(!Queue.is_empty(syncQueue) && !rejected[0]) {
-                var match = Queue.take(syncQueue);
-                Curry._1(match[1], match[0]);
+                onResponse(Queue.take(syncQueue));
               };
               return /* Cancel */[(function (param) {
-                          return List.iter((function (task) {
+                          return $$Array.iter((function (task) {
                                         return Curry._1(task[/* cancel */0], /* () */0);
                                       }), hotTask[0]);
                         })];
@@ -218,9 +253,9 @@ function parallel(concurrentTasks) {
 }
 
 function timeout(value) {
-  return /* Task */[(function (rej, res) {
+  return /* Task */[(function (param, res) {
               var timer = setTimeout((function (param) {
-                      return Curry._1(rej, value);
+                      return Curry._1(res, value);
                     }), 1000);
               return /* Cancel */[(function (param) {
                           clearTimeout(timer);
@@ -229,37 +264,89 @@ function timeout(value) {
             })];
 }
 
-var unsubscribe = run((function (param) {
-        if (param.tag) {
-          console.log(param[0]);
-          return /* () */0;
-        } else {
-          console.log(param[0] + " there was an error");
-          return /* () */0;
-        }
-      }), mapRej(chain(map(chain(/* Task */[(function (param, res) {
-                          Curry._1(res, 5000);
-                          return /* NoCancel */0;
-                        })], (function (x) {
-                        var value = Caml_int32.imul(x, 5000);
-                        return /* Task */[(function (param, res) {
-                                    Curry._1(res, value);
-                                    return /* NoCancel */0;
-                                  })];
-                      })), (function (x) {
-                    return x + 300 | 0;
-                  })), timeout), (function (prim) {
-            return String(prim);
+function notTimeout(value) {
+  return /* Task */[(function (param, res) {
+              Curry._1(res, value);
+              return /* NoCancel */0;
+            })];
+}
+
+var p = map(parallel(Pervasives.$at(List.map(timeout, /* :: */[
+                  1,
+                  /* :: */[
+                    2,
+                    /* :: */[
+                      3,
+                      /* :: */[
+                        4,
+                        /* :: */[
+                          5,
+                          /* :: */[
+                            6,
+                            /* :: */[
+                              7,
+                              /* :: */[
+                                8,
+                                /* :: */[
+                                  9,
+                                  /* [] */0
+                                ]
+                              ]
+                            ]
+                          ]
+                        ]
+                      ]
+                    ]
+                  ]
+                ]), $$Array.to_list($$Array.map(notTimeout, $$Array.mapi((function (index, param) {
+                            return index + 10 | 0;
+                          }), Caml_array.caml_make_vect(10000, 1)))))), (function (param) {
+        return List.fold_left((function (a, b) {
+                      return a + b | 0;
+                    }), 0, param);
+      }));
+
+function makeTask(i) {
+  if (i >= 100000) {
+    var value = /* Done */Block.__(1, [i + 1 | 0]);
+    return /* Task */[(function (param, res) {
+                Curry._1(res, value);
+                return /* NoCancel */0;
+              })];
+  } else if (i < 0) {
+    return /* Task */[(function (rej, param) {
+                Curry._1(rej, "i must be positive");
+                return /* NoCancel */0;
+              })];
+  } else {
+    var value$1 = /* Next */Block.__(0, [i + 1 | 0]);
+    return /* Task */[(function (param, res) {
+                Curry._1(res, value$1);
+                return /* NoCancel */0;
+              })];
+  }
+}
+
+var t = run((function (param) {
+        console.log(param[0]);
+        return /* () */0;
+      }), chain(p, (function (param) {
+            return chainRec(makeTask, param);
           })));
 
 exports.run = run;
 exports.chain = chain;
+exports.chainRec = chainRec;
 exports.chainRej = chainRej;
 exports.map = map;
 exports.mapRej = mapRej;
 exports.identity = identity;
+exports.reject = reject;
 exports.Operators = Operators;
 exports.parallel = parallel;
 exports.timeout = timeout;
-exports.unsubscribe = unsubscribe;
-/* unsubscribe Not a pure module */
+exports.notTimeout = notTimeout;
+exports.p = p;
+exports.makeTask = makeTask;
+exports.t = t;
+/* p Not a pure module */
