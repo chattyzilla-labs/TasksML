@@ -55,12 +55,11 @@ Creates a task which immediately rejects with the given value.
 ```reason
 let sampleReject = Task.reject("sample reject text!");
 sampleReject |> run (
-status => 
-switch (status) {
-       | Rejection(e) => Js.log("I tried so hard", e)
-       | Success(s) => Js.log("This will never rub", s), //this sample immediately rejects
-
-  };
+    status  => 
+        switch (status) {
+        | Rejection(e) => Js.log("I tried so hard", e)
+        | Success(s) => Js.log("This will never rub", s) //this sample immediately rejects
+    }
 );
 //! "I tried so hard! I got so far!"
 ```
