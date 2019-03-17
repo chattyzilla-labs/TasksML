@@ -2,7 +2,7 @@
 
 
 
-TasksML offers a system similar Promises, Tasks, etc. We call them tasks. 
+TasksML offers a system similar to Promises, Tasks, etc. We call them tasks. 
 Like promises, tasks represent the result stemming from the success or failure of an asynchronous call (Input/output). Tasks are lazy.
 
 
@@ -57,8 +57,8 @@ let sampleReject = Task.reject("sample reject text!");
 sampleReject |> run (
 status => 
 switch (status) {
-       | Rejection(e) => Js.log(‘I tried so hard, e)
-       | Success(s) => Js.log(‘This will never rub, s), //this sample immediately rejects
+       | Rejection(e) => Js.log("I tried so hard", e)
+       | Success(s) => Js.log("This will never rub", s), //this sample immediately rejects
 
   };
 );
