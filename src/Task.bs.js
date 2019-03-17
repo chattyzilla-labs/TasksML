@@ -169,7 +169,113 @@ function mapRej(task, fn) {
             })];
 }
 
-function identity(value) {
+function bimap(task, rejMap, resMap) {
+  return /* Task */[(function (rej, res) {
+              var onResponse = function (status) {
+                if (status.tag) {
+                  return Curry._1(res, Curry._1(resMap, status[0]));
+                } else {
+                  return Curry._1(rej, Curry._1(rejMap, status[0]));
+                }
+              };
+              var cancel = run(onResponse, task);
+              return /* Cancel */[cancel];
+            })];
+}
+
+function fold(task, rejMap, resMap) {
+  return /* Task */[(function (param, res) {
+              var onResponse = function (status) {
+                if (status.tag) {
+                  return Curry._1(res, Curry._1(resMap, status[0]));
+                } else {
+                  return Curry._1(res, Curry._1(rejMap, status[0]));
+                }
+              };
+              var cancel = run(onResponse, task);
+              return /* Cancel */[cancel];
+            })];
+}
+
+function also(task1, task2) {
+  return /* Task */[(function (rej, res) {
+              var cancelFn = /* record */[/* contents */(function (param) {
+                    return /* () */0;
+                  })];
+              var onResponse = function (status) {
+                if (status.tag) {
+                  cancelFn[0] = run((function (status) {
+                          if (status.tag) {
+                            return Curry._1(res, status[0]);
+                          } else {
+                            return Curry._1(rej, status[0]);
+                          }
+                        }), task2);
+                  return /* () */0;
+                } else {
+                  return Curry._1(rej, status[0]);
+                }
+              };
+              cancelFn[0] = run(onResponse, task1);
+              return /* Cancel */[(function (param) {
+                          return Curry._1(cancelFn[0], /* () */0);
+                        })];
+            })];
+}
+
+function alt(task1, task2) {
+  return /* Task */[(function (rej, res) {
+              var cancelFn = /* record */[/* contents */(function (param) {
+                    return /* () */0;
+                  })];
+              var onResponse = function (status) {
+                if (status.tag) {
+                  return Curry._1(res, status[0]);
+                } else {
+                  cancelFn[0] = run((function (status) {
+                          if (status.tag) {
+                            return Curry._1(res, status[0]);
+                          } else {
+                            return Curry._1(rej, status[0]);
+                          }
+                        }), task2);
+                  return /* () */0;
+                }
+              };
+              cancelFn[0] = run(onResponse, task1);
+              return /* Cancel */[(function (param) {
+                          return Curry._1(cancelFn[0], /* () */0);
+                        })];
+            })];
+}
+
+function $$finally(task1, task2) {
+  return /* Task */[(function (rej, res) {
+              var cancelFn = /* record */[/* contents */(function (param) {
+                    return /* () */0;
+                  })];
+              var onResponse = function (status1) {
+                cancelFn[0] = run((function (status) {
+                        if (status.tag) {
+                          if (status1.tag) {
+                            return Curry._1(res, status1[0]);
+                          } else {
+                            return Curry._1(rej, status1[0]);
+                          }
+                        } else {
+                          return Curry._1(rej, status[0]);
+                        }
+                      }), task2);
+                return /* () */0;
+              };
+              cancelFn[0] = run(onResponse, task1);
+              return /* Cancel */[(function (param) {
+                          return Curry._1(cancelFn[0], /* () */0);
+                        })];
+            })];
+}
+
+function pure(value) {
   return /* Task */[(function (param, res) {
               Curry._1(res, value);
               return /* NoCancel */0;
@@ -334,13 +440,24 @@ var t = run((function (param) {
             return chainRec(makeTask, param);
           })));
 
+var bind = chain;
+
+var resolve = pure;
+
 exports.run = run;
 exports.chain = chain;
+exports.bind = bind;
 exports.chainRec = chainRec;
 exports.chainRej = chainRej;
 exports.map = map;
 exports.mapRej = mapRej;
-exports.identity = identity;
+exports.bimap = bimap;
+exports.fold = fold;
+exports.also = also;
+exports.alt = alt;
+exports.$$finally = $$finally;
+exports.pure = pure;
+exports.resolve = resolve;
 exports.reject = reject;
 exports.Operators = Operators;
 exports.parallel = parallel;

@@ -20,8 +20,6 @@ type interator('a, 'b) =
   | Next('a)
   | Done('b);
 
-type recursiveTask('a, 'b, 'rej) =
-  ('a => task('rej, interator('a, 'b)), 'a) => task('rej, 'b);
 
 let run = (onResponse, Task(task)) => {
   let openend = ref(true);
@@ -67,6 +65,8 @@ let chain = (task, fn) =>
       Cancel(() => cancelFn^());
     },
   );
+
+let bind = chain
 
 let chainRec = (recTask, init) =>
   Task(
@@ -156,13 +156,109 @@ let mapRej = (task, fn) =>
     },
   );
 
-let identity = value =>
+let bimap = (task, rejMap, resMap) =>
+  Task(
+    (rej, res) => {
+      let onResponse = status =>
+        switch (status) {
+        | Rejection(err) => rejMap(err) -> rej
+        | Success(value) => resMap(value) -> res
+        };
+      let cancel = task |> run(onResponse);
+      Cancel(cancel);
+    },
+  );
+
+let fold = (task, rejMap, resMap) =>
+  Task(
+    (_, res) => {
+      let onResponse = status =>
+        switch (status) {
+        | Rejection(err) => rejMap(err) -> res
+        | Success(value) => resMap(value) -> res
+        };
+      let cancel = task |> run(onResponse);
+      Cancel(cancel);
+    },
+  );
+
+let also = (task1, task2) =>
+  Task(
+    (rej, res) => {
+      let cancelFn = ref(() => ());
+      let onResponse = status =>
+        switch (status) {
+        | Rejection(err) => rej(err)
+        | Success(_) =>
+          cancelFn :=
+            task2
+            |> run(status =>
+                 switch (status) {
+                 | Rejection(err) => rej(err)
+                 | Success(value) => res(value)
+                 }
+               )
+        };
+      cancelFn := task1 |> run(onResponse);
+      Cancel(() => cancelFn^());
+    },
+  );
+
+let alt = (task1, task2) =>
+  Task(
+    (rej, res) => {
+      let cancelFn = ref(() => ());
+      let onResponse = status =>
+        switch (status) {
+        | Success(value) => res(value)
+        | Rejection(_) =>
+          cancelFn :=
+            task2
+            |> run(status =>
+                 switch (status) {
+                 | Rejection(err) => rej(err)
+                 | Success(value) => res(value)
+                 }
+               )
+        };
+      cancelFn := task1 |> run(onResponse);
+      Cancel(() => cancelFn^());
+    },
+  );
+
+let finally = (task1, task2) =>
+  Task(
+    (rej, res) => {
+      let cancelFn = ref(() => ());
+      let onResponse = status1 => {
+        cancelFn :=
+          task2
+          |> run(status =>
+                switch (status) {
+                | Rejection(err) => rej(err)
+                | Success(_) =>
+                  switch (status1) {
+                  | Rejection(err) => rej(err)
+                  | Success(value) => res(value)
+                  }
+                }
+              )
+      }
+      cancelFn := task1 |> run(onResponse);
+      Cancel(() => cancelFn^());
+    },
+  );
+
+let pure = value =>
   Task(
     (_, res) => {
       res(value);
       NoCancel;
     },
   );
+
+let resolve = pure
+
 let reject = value =>
   Task(
     (rej, _) => {
@@ -261,9 +357,9 @@ let p =
 
 let makeTask = i =>
   switch (i) {
-  | i when i >= 100000 => (i + 1) -> Done |> identity
+  | i when i >= 100000 => (i + 1) -> Done |> pure
   | i when i < 0 => reject("i must be positive")
-  | i => identity(Next(i + 1))
+  | i => pure(Next(i + 1))
   };
 
 let t =
@@ -274,3 +370,5 @@ let t =
        | Rejection(v) => Js.log(v)
        | Success(s) => Js.log(s),
      );
+
+// TODO: add hook method, both, triple, quadruple, quintuple, sextuple,
