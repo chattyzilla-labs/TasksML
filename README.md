@@ -57,9 +57,25 @@ let sampleReject = Task.reject("sample reject text!");
 sampleReject |> run (
     status  => 
         switch (status) {
-        | Rejection(e) => Js.log("I tried so hard", e)
-        | Success(s) => Js.log("This will never rub", s) //this sample immediately rejects
+        | Rejection(e) => Js.log("Rejection Case", e)
+        | Success(s) => Js.log("This will never run", s) //this sample immediately rejects
     }
 );
-//! "I tried so hard! I got so far!"
+//! "Rejection Case! sample reject text!"
 ```
+
+### Identity
+Creates a task which immediately resolves with the given value
+
+```reason
+let sampleReject = Task.reject("sample resolve text!");
+sampleReject |> run (
+    status  => 
+        switch (status) {
+        | Rejection(e) => Js.log("This will never run", e) //this sample immediately resolves
+        | Success(s) => Js.log("Sucess Case", s) 
+    }
+);
+//! "Sucess Case! Sample resolve text!"
+```
+
