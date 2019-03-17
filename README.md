@@ -53,7 +53,7 @@ let timeout = value => Task((rej, res) => {
 Creates a task which immediately rejects with the given value.
 
 ```reason
-let sampleReject = Task.reject("sample reject text!");
+let sampleReject = Task.reject("Sample reject text!");
 sampleReject |> run (
     status  => 
         switch (status) {
@@ -61,21 +61,21 @@ sampleReject |> run (
         | Success(s) => Js.log("This will never run", s) //this sample immediately rejects
     }
 );
-//! "Rejection Case! sample reject text!"
+//! "Rejection Case! Sample reject text!"
 ```
 
 ### Identity
 Creates a task which immediately resolves with the given value
 
 ```reason
-let sampleReject = Task.reject("sample resolve text!");
+let sampleReject = Task.reject("Sample resolve text!");
 sampleReject |> run (
     status  => 
         switch (status) {
         | Rejection(e) => Js.log("This will never run", e) //this sample immediately resolves
-        | Success(s) => Js.log("Sucess Case", s) 
+        | Success(s) => Js.log("Success Case", s) 
     }
 );
-//! "Sucess Case! Sample resolve text!"
+//! "Success Case! Sample resolve text!"
 ```
 
