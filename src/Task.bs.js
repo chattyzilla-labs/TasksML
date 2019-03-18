@@ -8,6 +8,7 @@ var Curry = require("bs-platform/lib/js/curry.js");
 var Queue = require("bs-platform/lib/js/queue.js");
 var Caml_array = require("bs-platform/lib/js/caml_array.js");
 var Pervasives = require("bs-platform/lib/js/pervasives.js");
+var Caml_option = require("bs-platform/lib/js/caml_option.js");
 
 function run(onResponse, param) {
   var openend = /* record */[/* contents */true];
@@ -358,6 +359,346 @@ function parallel(concurrentTasks) {
             })];
 }
 
+function both(param) {
+  var task2 = param[1];
+  var task1 = param[0];
+  return /* Task */[(function (rej, res) {
+              var task1Res = /* record */[/* contents */undefined];
+              var task2Res = /* record */[/* contents */undefined];
+              var task1Cancel = /* record */[/* contents */(function (param) {
+                    return /* () */0;
+                  })];
+              var task2Cancel = /* record */[/* contents */(function (param) {
+                    return /* () */0;
+                  })];
+              var onResponse1 = function (response) {
+                if (response.tag) {
+                  var value = response[0];
+                  var match = task2Res[0];
+                  if (match !== undefined) {
+                    return Curry._1(res, /* tuple */[
+                                value,
+                                Caml_option.valFromOption(match)
+                              ]);
+                  } else {
+                    task1Res[0] = Caml_option.some(value);
+                    return /* () */0;
+                  }
+                } else {
+                  Curry._1(task2Cancel[0], /* () */0);
+                  return Curry._1(rej, response[0]);
+                }
+              };
+              var onResponse2 = function (response) {
+                if (response.tag) {
+                  var value = response[0];
+                  var match = task1Res[0];
+                  if (match !== undefined) {
+                    return Curry._1(res, /* tuple */[
+                                Caml_option.valFromOption(match),
+                                value
+                              ]);
+                  } else {
+                    task2Res[0] = Caml_option.some(value);
+                    return /* () */0;
+                  }
+                } else {
+                  Curry._1(task1Cancel[0], /* () */0);
+                  return Curry._1(rej, response[0]);
+                }
+              };
+              task1Cancel[0] = run(onResponse1, task1);
+              task2Cancel[0] = run(onResponse2, task2);
+              return /* Cancel */[(function (param) {
+                          Curry._1(task1Cancel[0], /* () */0);
+                          return Curry._1(task2Cancel[0], /* () */0);
+                        })];
+            })];
+}
+
+function triple(param) {
+  var task3 = param[2];
+  var task2 = param[1];
+  var task1 = param[0];
+  return /* Task */[(function (rej, res) {
+              var task1Res = /* record */[/* contents */undefined];
+              var task2Res = /* record */[/* contents */undefined];
+              var task1Cancel = /* record */[/* contents */(function (param) {
+                    return /* () */0;
+                  })];
+              var task2Cancel = /* record */[/* contents */(function (param) {
+                    return /* () */0;
+                  })];
+              var onResponse1 = function (response) {
+                if (response.tag) {
+                  var value = response[0];
+                  var match = task2Res[0];
+                  if (match !== undefined) {
+                    return Curry._1(res, /* tuple */[
+                                value[0],
+                                value[1],
+                                Caml_option.valFromOption(match)
+                              ]);
+                  } else {
+                    task1Res[0] = value;
+                    return /* () */0;
+                  }
+                } else {
+                  Curry._1(task2Cancel[0], /* () */0);
+                  return Curry._1(rej, response[0]);
+                }
+              };
+              var onResponse2 = function (response) {
+                if (response.tag) {
+                  var value = response[0];
+                  var match = task1Res[0];
+                  if (match !== undefined) {
+                    var task1Value = match;
+                    return Curry._1(res, /* tuple */[
+                                task1Value[0],
+                                task1Value[1],
+                                value
+                              ]);
+                  } else {
+                    task2Res[0] = Caml_option.some(value);
+                    return /* () */0;
+                  }
+                } else {
+                  Curry._1(task1Cancel[0], /* () */0);
+                  return Curry._1(rej, response[0]);
+                }
+              };
+              task1Cancel[0] = run(onResponse1, both(/* tuple */[
+                        task1,
+                        task2
+                      ]));
+              task2Cancel[0] = run(onResponse2, task3);
+              return /* Cancel */[(function (param) {
+                          Curry._1(task1Cancel[0], /* () */0);
+                          return Curry._1(task2Cancel[0], /* () */0);
+                        })];
+            })];
+}
+
+function quadruple(param) {
+  var task4 = param[3];
+  var task3 = param[2];
+  var task2 = param[1];
+  var task1 = param[0];
+  return /* Task */[(function (rej, res) {
+              var task1Res = /* record */[/* contents */undefined];
+              var task2Res = /* record */[/* contents */undefined];
+              var task1Cancel = /* record */[/* contents */(function (param) {
+                    return /* () */0;
+                  })];
+              var task2Cancel = /* record */[/* contents */(function (param) {
+                    return /* () */0;
+                  })];
+              var onResponse1 = function (response) {
+                if (response.tag) {
+                  var value = response[0];
+                  var match = task2Res[0];
+                  if (match !== undefined) {
+                    var task2Value = match;
+                    return Curry._1(res, /* tuple */[
+                                value[0],
+                                value[1],
+                                task2Value[0],
+                                task2Value[1]
+                              ]);
+                  } else {
+                    task1Res[0] = value;
+                    return /* () */0;
+                  }
+                } else {
+                  Curry._1(task2Cancel[0], /* () */0);
+                  return Curry._1(rej, response[0]);
+                }
+              };
+              var onResponse2 = function (response) {
+                if (response.tag) {
+                  var value = response[0];
+                  var match = task1Res[0];
+                  if (match !== undefined) {
+                    var task1Value = match;
+                    return Curry._1(res, /* tuple */[
+                                task1Value[0],
+                                task1Value[1],
+                                value[0],
+                                value[1]
+                              ]);
+                  } else {
+                    task2Res[0] = value;
+                    return /* () */0;
+                  }
+                } else {
+                  Curry._1(task1Cancel[0], /* () */0);
+                  return Curry._1(rej, response[0]);
+                }
+              };
+              task1Cancel[0] = run(onResponse1, both(/* tuple */[
+                        task1,
+                        task2
+                      ]));
+              task2Cancel[0] = run(onResponse2, both(/* tuple */[
+                        task3,
+                        task4
+                      ]));
+              return /* Cancel */[(function (param) {
+                          Curry._1(task1Cancel[0], /* () */0);
+                          return Curry._1(task2Cancel[0], /* () */0);
+                        })];
+            })];
+}
+
+function quintuple(param) {
+  var task5 = param[4];
+  var task4 = param[3];
+  var task3 = param[2];
+  var task2 = param[1];
+  var task1 = param[0];
+  return /* Task */[(function (rej, res) {
+              var task1Res = /* record */[/* contents */undefined];
+              var task2Res = /* record */[/* contents */undefined];
+              var task1Cancel = /* record */[/* contents */(function (param) {
+                    return /* () */0;
+                  })];
+              var task2Cancel = /* record */[/* contents */(function (param) {
+                    return /* () */0;
+                  })];
+              var onResponse1 = function (response) {
+                if (response.tag) {
+                  var value = response[0];
+                  var match = task2Res[0];
+                  if (match !== undefined) {
+                    return Curry._1(res, /* tuple */[
+                                value[0],
+                                value[1],
+                                value[2],
+                                value[3],
+                                Caml_option.valFromOption(match)
+                              ]);
+                  } else {
+                    task1Res[0] = value;
+                    return /* () */0;
+                  }
+                } else {
+                  Curry._1(task2Cancel[0], /* () */0);
+                  return Curry._1(rej, response[0]);
+                }
+              };
+              var onResponse2 = function (response) {
+                if (response.tag) {
+                  var value = response[0];
+                  var match = task1Res[0];
+                  if (match !== undefined) {
+                    var task1Value = match;
+                    return Curry._1(res, /* tuple */[
+                                task1Value[0],
+                                task1Value[1],
+                                task1Value[2],
+                                task1Value[3],
+                                value
+                              ]);
+                  } else {
+                    task2Res[0] = Caml_option.some(value);
+                    return /* () */0;
+                  }
+                } else {
+                  Curry._1(task1Cancel[0], /* () */0);
+                  return Curry._1(rej, response[0]);
+                }
+              };
+              task1Cancel[0] = run(onResponse1, quadruple(/* tuple */[
+                        task1,
+                        task2,
+                        task3,
+                        task4
+                      ]));
+              task2Cancel[0] = run(onResponse2, task5);
+              return /* Cancel */[(function (param) {
+                          Curry._1(task1Cancel[0], /* () */0);
+                          return Curry._1(task2Cancel[0], /* () */0);
+                        })];
+            })];
+}
+
+function sextuple(param) {
+  var task6 = param[5];
+  var task5 = param[4];
+  var task4 = param[3];
+  var task3 = param[2];
+  var task2 = param[1];
+  var task1 = param[0];
+  return /* Task */[(function (rej, res) {
+              var task1Res = /* record */[/* contents */undefined];
+              var task2Res = /* record */[/* contents */undefined];
+              var task1Cancel = /* record */[/* contents */(function (param) {
+                    return /* () */0;
+                  })];
+              var task2Cancel = /* record */[/* contents */(function (param) {
+                    return /* () */0;
+                  })];
+              var onResponse1 = function (response) {
+                if (response.tag) {
+                  var value = response[0];
+                  var match = task2Res[0];
+                  if (match !== undefined) {
+                    return Curry._1(res, /* tuple */[
+                                value[0],
+                                value[1],
+                                value[2],
+                                value[3],
+                                value[4],
+                                Caml_option.valFromOption(match)
+                              ]);
+                  } else {
+                    task1Res[0] = value;
+                    return /* () */0;
+                  }
+                } else {
+                  Curry._1(task2Cancel[0], /* () */0);
+                  return Curry._1(rej, response[0]);
+                }
+              };
+              var onResponse2 = function (response) {
+                if (response.tag) {
+                  var value = response[0];
+                  var match = task1Res[0];
+                  if (match !== undefined) {
+                    var task1Value = match;
+                    return Curry._1(res, /* tuple */[
+                                task1Value[0],
+                                task1Value[1],
+                                task1Value[2],
+                                task1Value[3],
+                                task1Value[4],
+                                value
+                              ]);
+                  } else {
+                    task2Res[0] = Caml_option.some(value);
+                    return /* () */0;
+                  }
+                } else {
+                  Curry._1(task1Cancel[0], /* () */0);
+                  return Curry._1(rej, response[0]);
+                }
+              };
+              task1Cancel[0] = run(onResponse1, quintuple(/* tuple */[
+                        task1,
+                        task2,
+                        task3,
+                        task4,
+                        task5
+                      ]));
+              task2Cancel[0] = run(onResponse2, task6);
+              return /* Cancel */[(function (param) {
+                          Curry._1(task1Cancel[0], /* () */0);
+                          return Curry._1(task2Cancel[0], /* () */0);
+                        })];
+            })];
+}
+
 function timeout(value) {
   return /* Task */[(function (param, res) {
               var timer = setTimeout((function (param) {
@@ -461,6 +802,11 @@ exports.resolve = resolve;
 exports.reject = reject;
 exports.Operators = Operators;
 exports.parallel = parallel;
+exports.both = both;
+exports.triple = triple;
+exports.quadruple = quadruple;
+exports.quintuple = quintuple;
+exports.sextuple = sextuple;
 exports.timeout = timeout;
 exports.notTimeout = notTimeout;
 exports.p = p;

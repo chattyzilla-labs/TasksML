@@ -330,6 +330,249 @@ let parallel = concurrentTasks =>
     },
   );
 
+let both = ((task1, task2)) => 
+  Task(
+    (rej, res) => {
+      let task1Res = ref(None)
+      let task2Res = ref(None)
+      let task1Cancel = ref(() => ())
+      let task2Cancel = ref(() => ())
+      let onResponse1 = (response) => {
+        switch response {
+        | Success(value) =>
+          switch task2Res^ {
+          | None => {
+              task1Res := Some(value);
+              ()
+            }
+          | Some(task2Value) => res((value, task2Value))
+          }
+        | Rejection(err) => {
+            task2Cancel^()
+            rej(err)
+          }
+        }
+      }
+      let onResponse2 = (response) => {
+        switch response {
+        | Success(value) =>
+          switch task1Res^ {
+          | None => {
+              task2Res := Some(value)
+            }
+          | Some(task1Value) => res((task1Value, value))
+          }
+        | Rejection(err) => {
+            task1Cancel^()
+            rej(err)
+          }
+        }
+      }
+
+      task1Cancel := task1 |> run(onResponse1)
+      task2Cancel := task2 |> run(onResponse2)
+
+      Cancel(() => { task1Cancel^(); task2Cancel^(); })
+    }
+  )
+
+let triple = ((task1, task2, task3)) => 
+  Task(
+    (rej, res) => {
+      let task1Res = ref(None)
+      let task2Res = ref(None)
+      let task1Cancel = ref(() => ())
+      let task2Cancel = ref(() => ())
+      let onResponse1 = (response) => {
+        switch response {
+        | Success(value) =>
+          switch task2Res^ {
+          | None => {
+              task1Res := Some(value);
+              ()
+            }
+          | Some(task2Value) => res((fst(value), snd(value), task2Value))
+          }
+        | Rejection(err) => {
+            task2Cancel^()
+            rej(err)
+          }
+        }
+      }
+      let onResponse2 = (response) => {
+        switch response {
+        | Success(value) =>
+          switch task1Res^ {
+          | None => {
+              task2Res := Some(value)
+            }
+          | Some(task1Value) => res((fst(task1Value), snd(task1Value), value))
+          }
+        | Rejection(err) => {
+            task1Cancel^()
+            rej(err)
+          }
+        }
+      }
+
+      task1Cancel := both((task1, task2)) |> run(onResponse1)
+      task2Cancel := task3 |> run(onResponse2)
+
+      Cancel(() => { task1Cancel^(); task2Cancel^(); })
+    }
+  )
+
+let quadruple = ((task1, task2, task3, task4)) => 
+  Task(
+    (rej, res) => {
+      let task1Res = ref(None)
+      let task2Res = ref(None)
+      let task1Cancel = ref(() => ())
+      let task2Cancel = ref(() => ())
+      let onResponse1 = (response) => {
+        switch response {
+        | Success(value) =>
+          switch task2Res^ {
+          | None => {
+              task1Res := Some(value);
+              ()
+            }
+          | Some(task2Value) => res((fst(value), snd(value), fst(task2Value), snd(task2Value)))
+          }
+        | Rejection(err) => {
+            task2Cancel^()
+            rej(err)
+          }
+        }
+      }
+      let onResponse2 = (response) => {
+        switch response {
+        | Success(value) =>
+          switch task1Res^ {
+          | None => {
+              task2Res := Some(value)
+            }
+          | Some(task1Value) => res((fst(task1Value), snd(task1Value), fst(value), snd(value)))
+          }
+        | Rejection(err) => {
+            task1Cancel^()
+            rej(err)
+          }
+        }
+      }
+
+      task1Cancel := both((task1, task2)) |> run(onResponse1)
+      task2Cancel := both((task3, task4)) |> run(onResponse2)
+
+      Cancel(() => { task1Cancel^(); task2Cancel^(); })
+    }
+  )
+
+let quintuple = ((task1, task2, task3, task4, task5)) => 
+  Task(
+    (rej, res) => {
+      let task1Res = ref(None)
+      let task2Res = ref(None)
+      let task1Cancel = ref(() => ())
+      let task2Cancel = ref(() => ())
+      let onResponse1 = (response) => {
+        switch response {
+        | Success(value) =>
+          switch task2Res^ {
+          | None => {
+              task1Res := Some(value);
+              ()
+            }
+          | Some(task2Value) => {
+            let (a,b,c,d) = value
+            res((a, b, c, d, task2Value))
+          }
+          }
+        | Rejection(err) => {
+            task2Cancel^()
+            rej(err)
+          }
+        }
+      }
+      let onResponse2 = (response) => {
+        switch response {
+        | Success(value) =>
+          switch task1Res^ {
+          | None => {
+              task2Res := Some(value)
+            }
+          | Some(task1Value) => {
+            let (a,b,c,d) = task1Value
+            res((a, b, c, d, value))
+          }
+          }
+        | Rejection(err) => {
+            task1Cancel^()
+            rej(err)
+          }
+        }
+      }
+
+      task1Cancel := quadruple((task1, task2, task3, task4)) |> run(onResponse1)
+      task2Cancel := task5 |> run(onResponse2)
+
+      Cancel(() => { task1Cancel^(); task2Cancel^(); })
+    }
+  )
+
+let sextuple = ((task1, task2, task3, task4, task5, task6)) => 
+  Task(
+    (rej, res) => {
+      let task1Res = ref(None)
+      let task2Res = ref(None)
+      let task1Cancel = ref(() => ())
+      let task2Cancel = ref(() => ())
+      let onResponse1 = (response) => {
+        switch response {
+        | Success(value) =>
+          switch task2Res^ {
+          | None => {
+              task1Res := Some(value);
+              ()
+            }
+          | Some(task2Value) => {
+            let (a,b,c,d, e) = value
+            res((a, b, c, d, e, task2Value))
+          }
+          }
+        | Rejection(err) => {
+            task2Cancel^()
+            rej(err)
+          }
+        }
+      }
+      let onResponse2 = (response) => {
+        switch response {
+        | Success(value) =>
+          switch task1Res^ {
+          | None => {
+              task2Res := Some(value)
+            }
+          | Some(task1Value) => {
+            let (a,b,c,d, e) = task1Value
+            res((a, b, c, d, e, value))
+          }
+          }
+        | Rejection(err) => {
+            task1Cancel^()
+            rej(err)
+          }
+        }
+      }
+
+      task1Cancel := quintuple((task1, task2, task3, task4, task5)) |> run(onResponse1)
+      task2Cancel := task6 |> run(onResponse2)
+
+      Cancel(() => { task1Cancel^(); task2Cancel^(); })
+    }
+  )
+
+
 let timeout = value =>
   Task(
     (_, res) => {
@@ -371,4 +614,4 @@ let t =
        | Success(s) => Js.log(s),
      );
 
-// TODO: add hook method, both, triple, quadruple, quintuple, sextuple,
+// TODO: add hook method, convert to fastpipe
