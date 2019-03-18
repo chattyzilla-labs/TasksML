@@ -44,10 +44,12 @@ let run = (onResponse, Task(task)) => {
     };
 };
 
+let noop = () => ()
+
 let chain = (task, fn) =>
   Task(
     (rej, res) => {
-      let cancelFn = ref(() => ());
+      let cancelFn = ref(noop);
       let onResponse = status =>
         switch (status) {
         | Rejection(err) => rej(err)
@@ -71,7 +73,7 @@ let bind = chain
 let chainRec = (recTask, init) =>
   Task(
     (rej, res) => {
-      let cancelFn = ref(() => ());
+      let cancelFn = ref(noop);
       let currentValue = ref(init);
       let async = ref(false);
       let settled = ref(false);
@@ -111,7 +113,7 @@ let chainRec = (recTask, init) =>
 let chainRej = (task, fn) =>
   Task(
     (rej, res) => {
-      let cancelFn = ref(() => ());
+      let cancelFn = ref(noop);
       let onResponse = status =>
         switch (status) {
         | Rejection(err) =>
@@ -185,7 +187,7 @@ let fold = (task, rejMap, resMap) =>
 let also = (task1, task2) =>
   Task(
     (rej, res) => {
-      let cancelFn = ref(() => ());
+      let cancelFn = ref(noop);
       let onResponse = status =>
         switch (status) {
         | Rejection(err) => rej(err)
@@ -207,7 +209,7 @@ let also = (task1, task2) =>
 let alt = (task1, task2) =>
   Task(
     (rej, res) => {
-      let cancelFn = ref(() => ());
+      let cancelFn = ref(noop);
       let onResponse = status =>
         switch (status) {
         | Success(value) => res(value)
@@ -229,7 +231,7 @@ let alt = (task1, task2) =>
 let finally = (task1, task2) =>
   Task(
     (rej, res) => {
-      let cancelFn = ref(() => ());
+      let cancelFn = ref(noop);
       let onResponse = status1 => {
         cancelFn :=
           task2
@@ -248,6 +250,38 @@ let finally = (task1, task2) =>
       Cancel(() => cancelFn^());
     },
   );
+
+let hook = (acquire, dispose, consume) =>
+  Task(
+    (rej, res) => {
+      let cancelFn = ref(noop)
+      let onAquire = status =>
+        switch status {
+        | Rejection(err) => rej(err)
+        | Success(resource) => {
+            let runDispose = run(fun | Rejection(err) => raise(err) | Success(_) => ())
+            let onResponse = status =>
+              switch status {
+              | Rejection(err) => {
+                  rej(err)
+                  dispose(resource) |> runDispose |> ignore
+                }
+              | Success(value) => {
+                  res(value)
+                  dispose(resource) |> runDispose |> ignore
+                }
+              };
+            let cancelConsumer = consume(resource) |> run(onResponse)
+            cancelFn := () => {
+              cancelConsumer()
+              dispose(resource) |> runDispose |> ignore
+            }
+          }
+        };
+      cancelFn := acquire |> run(onAquire)
+      Cancel(() => cancelFn^())
+    }
+  )
 
 let pure = value =>
   Task(
@@ -275,6 +309,25 @@ module Operators = {
 };
 
 open Operators;
+
+let race = (task1, task2) =>
+  Task(
+    (rej, res) => {
+      let cancelTask1 = ref(noop)
+      let cancelTask2 = ref(noop)
+      cancelTask1 := task1 |> run(
+        fun
+        | Rejection(err) => { rej(err); cancelTask2^();}
+        | Success(value) => { res(value); cancelTask2^();}
+      )
+      cancelTask2 := task2 |> run(
+        fun
+        | Rejection(err) => { rej(err); cancelTask1^();}
+        | Success(value) => { res(value); cancelTask1^();}
+      )
+      Cancel(() => { cancelTask1^(); cancelTask2^(); })
+    }
+  )
 
 let parallel = concurrentTasks =>
   Task(
@@ -330,13 +383,13 @@ let parallel = concurrentTasks =>
     },
   );
 
-let both = ((task1, task2)) => 
+let both = ((task1, task2)) =>
   Task(
     (rej, res) => {
       let task1Res = ref(None)
       let task2Res = ref(None)
-      let task1Cancel = ref(() => ())
-      let task2Cancel = ref(() => ())
+      let task1Cancel = ref(noop)
+      let task2Cancel = ref(noop)
       let onResponse1 = (response) => {
         switch response {
         | Success(value) =>
@@ -376,13 +429,13 @@ let both = ((task1, task2)) =>
     }
   )
 
-let triple = ((task1, task2, task3)) => 
+let triple = ((task1, task2, task3)) =>
   Task(
     (rej, res) => {
       let task1Res = ref(None)
       let task2Res = ref(None)
-      let task1Cancel = ref(() => ())
-      let task2Cancel = ref(() => ())
+      let task1Cancel = ref(noop)
+      let task2Cancel = ref(noop)
       let onResponse1 = (response) => {
         switch response {
         | Success(value) =>
@@ -422,13 +475,13 @@ let triple = ((task1, task2, task3)) =>
     }
   )
 
-let quadruple = ((task1, task2, task3, task4)) => 
+let quadruple = ((task1, task2, task3, task4)) =>
   Task(
     (rej, res) => {
       let task1Res = ref(None)
       let task2Res = ref(None)
-      let task1Cancel = ref(() => ())
-      let task2Cancel = ref(() => ())
+      let task1Cancel = ref(noop)
+      let task2Cancel = ref(noop)
       let onResponse1 = (response) => {
         switch response {
         | Success(value) =>
@@ -468,13 +521,13 @@ let quadruple = ((task1, task2, task3, task4)) =>
     }
   )
 
-let quintuple = ((task1, task2, task3, task4, task5)) => 
+let quintuple = ((task1, task2, task3, task4, task5)) =>
   Task(
     (rej, res) => {
       let task1Res = ref(None)
       let task2Res = ref(None)
-      let task1Cancel = ref(() => ())
-      let task2Cancel = ref(() => ())
+      let task1Cancel = ref(noop)
+      let task2Cancel = ref(noop)
       let onResponse1 = (response) => {
         switch response {
         | Success(value) =>
@@ -520,13 +573,13 @@ let quintuple = ((task1, task2, task3, task4, task5)) =>
     }
   )
 
-let sextuple = ((task1, task2, task3, task4, task5, task6)) => 
+let sextuple = ((task1, task2, task3, task4, task5, task6)) =>
   Task(
     (rej, res) => {
       let task1Res = ref(None)
       let task2Res = ref(None)
-      let task1Cancel = ref(() => ())
-      let task2Cancel = ref(() => ())
+      let task1Cancel = ref(noop)
+      let task2Cancel = ref(noop)
       let onResponse1 = (response) => {
         switch response {
         | Success(value) =>
@@ -614,4 +667,4 @@ let t =
        | Success(s) => Js.log(s),
      );
 
-// TODO: add hook method, convert to fastpipe
+// TODO: convert to fastpipe, add module for util methods designed soley for js enviorments

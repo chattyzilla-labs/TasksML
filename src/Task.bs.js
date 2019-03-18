@@ -43,11 +43,13 @@ function run(onResponse, param) {
     });
 }
 
+function noop(param) {
+  return /* () */0;
+}
+
 function chain(task, fn) {
   return /* Task */[(function (rej, res) {
-              var cancelFn = /* record */[/* contents */(function (param) {
-                    return /* () */0;
-                  })];
+              var cancelFn = /* record */[/* contents */noop];
               var onResponse = function (status) {
                 if (status.tag) {
                   cancelFn[0] = run((function (status) {
@@ -71,9 +73,7 @@ function chain(task, fn) {
 
 function chainRec(recTask, init) {
   return /* Task */[(function (rej, res) {
-              var cancelFn = /* record */[/* contents */(function (param) {
-                    return /* () */0;
-                  })];
+              var cancelFn = /* record */[/* contents */noop];
               var currentValue = /* record */[/* contents */init];
               var async = /* record */[/* contents */false];
               var settled = /* record */[/* contents */false];
@@ -118,9 +118,7 @@ function chainRec(recTask, init) {
 
 function chainRej(task, fn) {
   return /* Task */[(function (rej, res) {
-              var cancelFn = /* record */[/* contents */(function (param) {
-                    return /* () */0;
-                  })];
+              var cancelFn = /* record */[/* contents */noop];
               var onResponse = function (status) {
                 if (status.tag) {
                   return Curry._1(res, status[0]);
@@ -200,9 +198,7 @@ function fold(task, rejMap, resMap) {
 
 function also(task1, task2) {
   return /* Task */[(function (rej, res) {
-              var cancelFn = /* record */[/* contents */(function (param) {
-                    return /* () */0;
-                  })];
+              var cancelFn = /* record */[/* contents */noop];
               var onResponse = function (status) {
                 if (status.tag) {
                   cancelFn[0] = run((function (status) {
@@ -226,9 +222,7 @@ function also(task1, task2) {
 
 function alt(task1, task2) {
   return /* Task */[(function (rej, res) {
-              var cancelFn = /* record */[/* contents */(function (param) {
-                    return /* () */0;
-                  })];
+              var cancelFn = /* record */[/* contents */noop];
               var onResponse = function (status) {
                 if (status.tag) {
                   return Curry._1(res, status[0]);
@@ -252,9 +246,7 @@ function alt(task1, task2) {
 
 function $$finally(task1, task2) {
   return /* Task */[(function (rej, res) {
-              var cancelFn = /* record */[/* contents */(function (param) {
-                    return /* () */0;
-                  })];
+              var cancelFn = /* record */[/* contents */noop];
               var onResponse = function (status1) {
                 cancelFn[0] = run((function (status) {
                         if (status.tag) {
@@ -270,6 +262,50 @@ function $$finally(task1, task2) {
                 return /* () */0;
               };
               cancelFn[0] = run(onResponse, task1);
+              return /* Cancel */[(function (param) {
+                          return Curry._1(cancelFn[0], /* () */0);
+                        })];
+            })];
+}
+
+function hook(acquire, dispose, consume) {
+  return /* Task */[(function (rej, res) {
+              var cancelFn = /* record */[/* contents */noop];
+              var onAquire = function (status) {
+                if (status.tag) {
+                  var resource = status[0];
+                  var runDispose = function (param) {
+                    return run((function (param) {
+                                  if (param.tag) {
+                                    return /* () */0;
+                                  } else {
+                                    throw param[0];
+                                  }
+                                }), param);
+                  };
+                  var onResponse = function (status) {
+                    if (status.tag) {
+                      Curry._1(res, status[0]);
+                      runDispose(Curry._1(dispose, resource));
+                      return /* () */0;
+                    } else {
+                      Curry._1(rej, status[0]);
+                      runDispose(Curry._1(dispose, resource));
+                      return /* () */0;
+                    }
+                  };
+                  var cancelConsumer = run(onResponse, Curry._1(consume, resource));
+                  cancelFn[0] = (function (param) {
+                      Curry._1(cancelConsumer, /* () */0);
+                      runDispose(Curry._1(dispose, resource));
+                      return /* () */0;
+                    });
+                  return /* () */0;
+                } else {
+                  return Curry._1(rej, status[0]);
+                }
+              };
+              cancelFn[0] = run(onAquire, acquire);
               return /* Cancel */[(function (param) {
                           return Curry._1(cancelFn[0], /* () */0);
                         })];
@@ -296,6 +332,35 @@ var Operators = /* module */[
   /* <!==!> */chainRej,
   /* <!@!> */mapRej
 ];
+
+function race(task1, task2) {
+  return /* Task */[(function (rej, res) {
+              var cancelTask1 = /* record */[/* contents */noop];
+              var cancelTask2 = /* record */[/* contents */noop];
+              cancelTask1[0] = run((function (param) {
+                      if (param.tag) {
+                        Curry._1(res, param[0]);
+                        return Curry._1(cancelTask2[0], /* () */0);
+                      } else {
+                        Curry._1(rej, param[0]);
+                        return Curry._1(cancelTask2[0], /* () */0);
+                      }
+                    }), task1);
+              cancelTask2[0] = run((function (param) {
+                      if (param.tag) {
+                        Curry._1(res, param[0]);
+                        return Curry._1(cancelTask1[0], /* () */0);
+                      } else {
+                        Curry._1(rej, param[0]);
+                        return Curry._1(cancelTask1[0], /* () */0);
+                      }
+                    }), task2);
+              return /* Cancel */[(function (param) {
+                          Curry._1(cancelTask1[0], /* () */0);
+                          return Curry._1(cancelTask2[0], /* () */0);
+                        })];
+            })];
+}
 
 function parallel(concurrentTasks) {
   return /* Task */[(function (rej, res) {
@@ -365,12 +430,8 @@ function both(param) {
   return /* Task */[(function (rej, res) {
               var task1Res = /* record */[/* contents */undefined];
               var task2Res = /* record */[/* contents */undefined];
-              var task1Cancel = /* record */[/* contents */(function (param) {
-                    return /* () */0;
-                  })];
-              var task2Cancel = /* record */[/* contents */(function (param) {
-                    return /* () */0;
-                  })];
+              var task1Cancel = /* record */[/* contents */noop];
+              var task2Cancel = /* record */[/* contents */noop];
               var onResponse1 = function (response) {
                 if (response.tag) {
                   var value = response[0];
@@ -423,12 +484,8 @@ function triple(param) {
   return /* Task */[(function (rej, res) {
               var task1Res = /* record */[/* contents */undefined];
               var task2Res = /* record */[/* contents */undefined];
-              var task1Cancel = /* record */[/* contents */(function (param) {
-                    return /* () */0;
-                  })];
-              var task2Cancel = /* record */[/* contents */(function (param) {
-                    return /* () */0;
-                  })];
+              var task1Cancel = /* record */[/* contents */noop];
+              var task2Cancel = /* record */[/* contents */noop];
               var onResponse1 = function (response) {
                 if (response.tag) {
                   var value = response[0];
@@ -488,12 +545,8 @@ function quadruple(param) {
   return /* Task */[(function (rej, res) {
               var task1Res = /* record */[/* contents */undefined];
               var task2Res = /* record */[/* contents */undefined];
-              var task1Cancel = /* record */[/* contents */(function (param) {
-                    return /* () */0;
-                  })];
-              var task2Cancel = /* record */[/* contents */(function (param) {
-                    return /* () */0;
-                  })];
+              var task1Cancel = /* record */[/* contents */noop];
+              var task2Cancel = /* record */[/* contents */noop];
               var onResponse1 = function (response) {
                 if (response.tag) {
                   var value = response[0];
@@ -560,12 +613,8 @@ function quintuple(param) {
   return /* Task */[(function (rej, res) {
               var task1Res = /* record */[/* contents */undefined];
               var task2Res = /* record */[/* contents */undefined];
-              var task1Cancel = /* record */[/* contents */(function (param) {
-                    return /* () */0;
-                  })];
-              var task2Cancel = /* record */[/* contents */(function (param) {
-                    return /* () */0;
-                  })];
+              var task1Cancel = /* record */[/* contents */noop];
+              var task2Cancel = /* record */[/* contents */noop];
               var onResponse1 = function (response) {
                 if (response.tag) {
                   var value = response[0];
@@ -633,12 +682,8 @@ function sextuple(param) {
   return /* Task */[(function (rej, res) {
               var task1Res = /* record */[/* contents */undefined];
               var task2Res = /* record */[/* contents */undefined];
-              var task1Cancel = /* record */[/* contents */(function (param) {
-                    return /* () */0;
-                  })];
-              var task2Cancel = /* record */[/* contents */(function (param) {
-                    return /* () */0;
-                  })];
+              var task1Cancel = /* record */[/* contents */noop];
+              var task2Cancel = /* record */[/* contents */noop];
               var onResponse1 = function (response) {
                 if (response.tag) {
                   var value = response[0];
@@ -786,6 +831,7 @@ var bind = chain;
 var resolve = pure;
 
 exports.run = run;
+exports.noop = noop;
 exports.chain = chain;
 exports.bind = bind;
 exports.chainRec = chainRec;
@@ -797,10 +843,12 @@ exports.fold = fold;
 exports.also = also;
 exports.alt = alt;
 exports.$$finally = $$finally;
+exports.hook = hook;
 exports.pure = pure;
 exports.resolve = resolve;
 exports.reject = reject;
 exports.Operators = Operators;
+exports.race = race;
 exports.parallel = parallel;
 exports.both = both;
 exports.triple = triple;
