@@ -3,10 +3,16 @@
 {
   "name": "task",
   "version": "0.1.0",
-  "sources": {
-    "dir" : "src",
-    "subdirs" : true
-  },
+  "sources": [
+    {
+      "dir": "src",
+      "subDirs": true
+    },
+    {
+      "dir": "__tests__",
+      "type": "dev"
+    }
+  ],
   "package-specs": {
     "module": "commonjs",
     "in-source": true
@@ -15,6 +21,7 @@
   "bs-dependencies": [
       // add your dependencies here. You'd usually install them normally through `npm install my-dependency`. If my-dependency has a bsconfig.json too, then everything will work seamlessly.
   ],
+  "bs-dev-dependencies": ["@glennsl/bs-jest"],
   "warnings": {
     "error" : "+101"
   },
