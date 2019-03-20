@@ -21,7 +21,7 @@ type interator('a, 'b) =
   | Done('b);
 
 
-let run = (onResponse, Task(task)) => {
+let run = (Task(task), onResponse) => {
   let openend = ref(true);
   let rejection = err =>
     if (openend^) {
@@ -56,14 +56,14 @@ let chain = (task, fn) =>
         | Success(value) =>
           cancelFn :=
             fn(value)
-            |> run(status =>
+            -> run(status =>
                  switch (status) {
                  | Rejection(err) => rej(err)
                  | Success(value) => res(value)
                  }
                )
         };
-      cancelFn := task |> run(onResponse);
+      cancelFn := task -> run(onResponse);
       Cancel(() => cancelFn^());
     },
   );
@@ -83,7 +83,7 @@ let chainRec = (recTask, init) =>
         async := false;
         while (! break^) {
           settled := false;
-          cancelFn := recTask(currentValue^) |> run(onResponse);
+          cancelFn := recTask(currentValue^) -> run(onResponse);
           if (! settled^) {
             async := true;
             break := true;
@@ -119,7 +119,7 @@ let chainRej = (task, fn) =>
         | Rejection(err) =>
           cancelFn :=
             fn(err)
-            |> run(status =>
+            -> run(status =>
                  switch (status) {
                  | Rejection(err) => rej(err)
                  | Success(value) => res(value)
@@ -127,7 +127,7 @@ let chainRej = (task, fn) =>
                )
         | Success(value) => res(value)
         };
-      cancelFn := task |> run(onResponse);
+      cancelFn := task -> run(onResponse);
       Cancel(() => cancelFn^());
     },
   );
@@ -140,7 +140,7 @@ let map = (task, fn) =>
         | Rejection(err) => rej(err)
         | Success(value) => fn(value) |> res
         };
-      let cancel = task |> run(onResponse);
+      let cancel = task -> run(onResponse);
       Cancel(cancel);
     },
   );
@@ -153,7 +153,7 @@ let mapRej = (task, fn) =>
         | Rejection(err) => fn(err) |> rej
         | Success(value) => res(value)
         };
-      let cancel = task |> run(onResponse);
+      let cancel = task -> run(onResponse);
       Cancel(cancel);
     },
   );
@@ -166,7 +166,7 @@ let bimap = (task, rejMap, resMap) =>
         | Rejection(err) => rejMap(err) -> rej
         | Success(value) => resMap(value) -> res
         };
-      let cancel = task |> run(onResponse);
+      let cancel = task -> run(onResponse);
       Cancel(cancel);
     },
   );
@@ -179,7 +179,7 @@ let fold = (task, rejMap, resMap) =>
         | Rejection(err) => rejMap(err) -> res
         | Success(value) => resMap(value) -> res
         };
-      let cancel = task |> run(onResponse);
+      let cancel = task -> run(onResponse);
       Cancel(cancel);
     },
   );
@@ -194,14 +194,14 @@ let also = (task1, task2) =>
         | Success(_) =>
           cancelFn :=
             task2
-            |> run(status =>
+            -> run(status =>
                  switch (status) {
                  | Rejection(err) => rej(err)
                  | Success(value) => res(value)
                  }
                )
         };
-      cancelFn := task1 |> run(onResponse);
+      cancelFn := task1 -> run(onResponse);
       Cancel(() => cancelFn^());
     },
   );
@@ -216,14 +216,14 @@ let alt = (task1, task2) =>
         | Rejection(_) =>
           cancelFn :=
             task2
-            |> run(status =>
+            -> run(status =>
                  switch (status) {
                  | Rejection(err) => rej(err)
                  | Success(value) => res(value)
                  }
                )
         };
-      cancelFn := task1 |> run(onResponse);
+      cancelFn := task1 -> run(onResponse);
       Cancel(() => cancelFn^());
     },
   );
@@ -235,7 +235,7 @@ let finally = (task1, task2) =>
       let onResponse = status1 => {
         cancelFn :=
           task2
-          |> run(status =>
+          -> run(status =>
                 switch (status) {
                 | Rejection(err) => rej(err)
                 | Success(_) =>
@@ -246,7 +246,7 @@ let finally = (task1, task2) =>
                 }
               )
       }
-      cancelFn := task1 |> run(onResponse);
+      cancelFn := task1 -> run(onResponse);
       Cancel(() => cancelFn^());
     },
   );
@@ -259,26 +259,26 @@ let hook = (acquire, dispose, consume) =>
         switch status {
         | Rejection(err) => rej(err)
         | Success(resource) => {
-            let runDispose = run(fun | Rejection(err) => raise(err) | Success(_) => ())
+            let runDispose = run(_, fun | Rejection(err) => raise(err) | Success(_) => ())
             let onResponse = status =>
               switch status {
               | Rejection(err) => {
                   rej(err)
-                  dispose(resource) |> runDispose |> ignore
+                  dispose(resource) -> runDispose |> ignore
                 }
               | Success(value) => {
                   res(value)
-                  dispose(resource) |> runDispose |> ignore
+                  dispose(resource) -> runDispose |> ignore
                 }
               };
-            let cancelConsumer = consume(resource) |> run(onResponse)
+            let cancelConsumer = consume(resource) -> run(onResponse)
             cancelFn := () => {
               cancelConsumer()
-              dispose(resource) |> runDispose |> ignore
+              dispose(resource) -> runDispose |> ignore
             }
           }
         };
-      cancelFn := acquire |> run(onAquire)
+      cancelFn := acquire -> run(onAquire)
       Cancel(() => cancelFn^())
     }
   )
@@ -301,26 +301,17 @@ let reject = value =>
     },
   );
 
-module Operators = {
-  let (>==<) = chain;
-  let (<@>) = map;
-  let (<!==!>) = chainRej;
-  let (<!@!>) = mapRej;
-};
-
-open Operators;
-
 let race = (task1, task2) =>
   Task(
     (rej, res) => {
       let cancelTask1 = ref(noop)
       let cancelTask2 = ref(noop)
-      cancelTask1 := task1 |> run(
+      cancelTask1 := task1 -> run(
         fun
         | Rejection(err) => { rej(err); cancelTask2^();}
         | Success(value) => { res(value); cancelTask2^();}
       )
-      cancelTask2 := task2 |> run(
+      cancelTask2 := task2 -> run(
         fun
         | Rejection(err) => { rej(err); cancelTask1^();}
         | Success(value) => { res(value); cancelTask1^();}
@@ -363,8 +354,8 @@ let parallel = concurrentTasks =>
              {
                cancel:
                  task
-                 <@> (value => (index, value))
-                 |> run(value =>
+                 -> map(value => (index, value))
+                 -> run(value =>
                       async^ ?
                         onResponse(value) : Queue.add(value, syncQueue)
                     ),
@@ -422,8 +413,8 @@ let both = ((task1, task2)) =>
         }
       }
 
-      task1Cancel := task1 |> run(onResponse1)
-      task2Cancel := task2 |> run(onResponse2)
+      task1Cancel := task1 -> run(onResponse1)
+      task2Cancel := task2 -> run(onResponse2)
 
       Cancel(() => { task1Cancel^(); task2Cancel^(); })
     }
@@ -468,8 +459,8 @@ let triple = ((task1, task2, task3)) =>
         }
       }
 
-      task1Cancel := both((task1, task2)) |> run(onResponse1)
-      task2Cancel := task3 |> run(onResponse2)
+      task1Cancel := both((task1, task2)) -> run(onResponse1)
+      task2Cancel := task3 -> run(onResponse2)
 
       Cancel(() => { task1Cancel^(); task2Cancel^(); })
     }
@@ -514,8 +505,8 @@ let quadruple = ((task1, task2, task3, task4)) =>
         }
       }
 
-      task1Cancel := both((task1, task2)) |> run(onResponse1)
-      task2Cancel := both((task3, task4)) |> run(onResponse2)
+      task1Cancel := both((task1, task2)) -> run(onResponse1)
+      task2Cancel := both((task3, task4)) -> run(onResponse2)
 
       Cancel(() => { task1Cancel^(); task2Cancel^(); })
     }
@@ -566,8 +557,8 @@ let quintuple = ((task1, task2, task3, task4, task5)) =>
         }
       }
 
-      task1Cancel := quadruple((task1, task2, task3, task4)) |> run(onResponse1)
-      task2Cancel := task5 |> run(onResponse2)
+      task1Cancel := quadruple((task1, task2, task3, task4)) -> run(onResponse1)
+      task2Cancel := task5 -> run(onResponse2)
 
       Cancel(() => { task1Cancel^(); task2Cancel^(); })
     }
@@ -618,53 +609,18 @@ let sextuple = ((task1, task2, task3, task4, task5, task6)) =>
         }
       }
 
-      task1Cancel := quintuple((task1, task2, task3, task4, task5)) |> run(onResponse1)
-      task2Cancel := task6 |> run(onResponse2)
+      task1Cancel := quintuple((task1, task2, task3, task4, task5)) -> run(onResponse1)
+      task2Cancel := task6 -> run(onResponse2)
 
       Cancel(() => { task1Cancel^(); task2Cancel^(); })
     }
   )
 
+module Operators = {
+  let (>>=) = chain;
+  let (>>@) = map;
+  let (>>!) = chainRej;
+  let (>>@!) = mapRej;
+  let (>>>) = run;
+};
 
-// let timeout = value =>
-//   Task(
-//     (_, res) => {
-//       let timer = Js.Global.setTimeout(() => res(value), 1000);
-//       Cancel(() => Js.Global.clearTimeout(timer));
-//     },
-//   );
-// let notTimeout = value =>
-//   Task(
-//     (_, res) => {
-//       res(value);
-//       NoCancel;
-//     },
-//   );
-// let p =
-//   ([1, 2, 3, 4, 5, 6, 7, 8, 9] |> List.map(timeout))
-//   @ (
-//     Array.make(10000, 1)
-//     |> Array.mapi((index, _) => index + 10)
-//     |> Array.map(notTimeout)
-//     |> Array.to_list
-//   )
-//   |> parallel
-//   <@> List.fold_left((a, b) => a + b, 0)
-
-// let makeTask = i =>
-//   switch (i) {
-//   | i when i >= 100000 => (i + 1) -> Done |> pure
-//   | i when i < 0 => reject("i must be positive")
-//   | i => pure(Next(i + 1))
-//   };
-
-// let t =
-//   p
-//   >==< chainRec(makeTask)
-//   |> run(
-//        fun
-//        | Rejection(v) => Js.log(v)
-//        | Success(s) => Js.log(s),
-//      );
-
-// TODO: convert to fastpipe, add module for util methods designed soley for js enviorments

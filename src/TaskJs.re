@@ -31,7 +31,7 @@ let encaseP3 = (promiseFn, param1, param2, param3) =>
 let toPromise = task => 
   Js.Promise.make(
     (~resolve, ~reject as _) => 
-      task |> run(value => resolve(. value)) |> ignore
+      task -> run(value => resolve(. value)) |> ignore
   )
 
 let after = (wait, value) =>

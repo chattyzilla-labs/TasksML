@@ -39,9 +39,9 @@ function encaseP3(promiseFn, param1, param2, param3) {
 
 function toPromise(task) {
   return new Promise((function (resolve, param) {
-                Task$Task.run((function (value) {
+                Task$Task.run(task, (function (value) {
                         return resolve(value);
-                      }), task);
+                      }));
                 return /* () */0;
               }));
 }
