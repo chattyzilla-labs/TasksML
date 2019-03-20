@@ -24,7 +24,7 @@ let p =
     |> Array.to_list
   )
   |> parallel
-  >>@ List.fold_left((a, b) => a + b, 0)
+  >>| List.fold_left((a, b) => a + b, 0)
 
 let makeTask = i =>
   switch (i) {

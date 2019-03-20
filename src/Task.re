@@ -618,9 +618,9 @@ let sextuple = ((task1, task2, task3, task4, task5, task6)) =>
 
 module Operators = {
   let (>>=) = chain;
-  let (>>@) = map;
-  let (>>!) = chainRej;
-  let (>>@!) = mapRej;
+  let (>>|) = map;
+  let (>>=!) = chainRej;
+  let (>>|!) = mapRej;
   let (>>>) = run;
 };
 

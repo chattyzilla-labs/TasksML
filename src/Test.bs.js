@@ -28,7 +28,7 @@ function notTimeout(value) {
             })];
 }
 
-var p = Task$Task.Operators[/* >>@ */1](Task$Task.parallel(Pervasives.$at(List.map(timeout, /* :: */[
+var p = Task$Task.Operators[/* >>| */1](Task$Task.parallel(Pervasives.$at(List.map(timeout, /* :: */[
                   1,
                   /* :: */[
                     2,

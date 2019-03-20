@@ -737,9 +737,9 @@ function sextuple(param) {
 
 var Operators = /* module */[
   /* >>= */chain,
-  /* >>@ */map,
-  /* >>! */chainRej,
-  /* >>@! */mapRej,
+  /* >>| */map,
+  /* >>=! */chainRej,
+  /* >>|! */mapRej,
   /* >>> */run
 ];
 
