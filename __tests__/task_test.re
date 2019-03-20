@@ -6,7 +6,7 @@ open Task.Operators;
 let timeout = value =>
   Task(
     (_, res) => {
-      let timer = Js.Global.setTimeout(() => res(value), 1000);
+      let timer = Js.Global.setTimeout(() => res(value), value);
       Cancel(() => Js.Global.clearTimeout(timer));
     },
   );
@@ -44,7 +44,7 @@ let t =
 
 let () =
 
-describe("Reason Syntax", () => {
+describe("Testing Task", () => {
   open Expect;
 
   testAsync("basic run", cb => {
@@ -56,6 +56,13 @@ describe("Reason Syntax", () => {
     )
     simpleTask -> 
       run(status => cb(expect(status) |> toEqual(Success(10)))) |> ignore
+  });
+
+  testAsync("Cancelation Test", cb => {
+    let cancel = timeout(100) -> 
+      run(fun | Rejection(_) => cb(fail("should not reject")) | Success(_) => cb(fail("should not run")))
+    cancel()
+    Js.Global.setTimeout(() => cb(pass), 110) |> ignore
   });
 
 });

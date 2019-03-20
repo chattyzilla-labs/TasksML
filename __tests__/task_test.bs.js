@@ -14,7 +14,7 @@ function timeout(value) {
   return /* Task */[(function (param, res) {
               var timer = setTimeout((function (param) {
                       return Curry._1(res, value);
-                    }), 1000);
+                    }), value);
               return /* Cancel */[(function (param) {
                           clearTimeout(timer);
                           return /* () */0;
@@ -81,15 +81,29 @@ var t = Task$Task.Operators[/* >>> */4](Task$Task.Operators[/* >>= */0](p, (func
         return /* () */0;
       }));
 
-Jest.describe("Reason Syntax", (function (param) {
-        return Jest.testAsync("basic run", undefined, (function (cb) {
-                      var simpleTask = /* Task */[(function (param, res) {
-                            Curry._1(res, 10);
-                            return /* NoCancel */0;
-                          })];
-                      Task$Task.run(simpleTask, (function (status) {
-                              return Curry._1(cb, Jest.Expect[/* toEqual */12](/* Success */Block.__(1, [10]), Jest.Expect[/* expect */0](status)));
+Jest.describe("Testing Task", (function (param) {
+        Jest.testAsync("basic run", undefined, (function (cb) {
+                var simpleTask = /* Task */[(function (param, res) {
+                      Curry._1(res, 10);
+                      return /* NoCancel */0;
+                    })];
+                Task$Task.run(simpleTask, (function (status) {
+                        return Curry._1(cb, Jest.Expect[/* toEqual */12](/* Success */Block.__(1, [10]), Jest.Expect[/* expect */0](status)));
+                      }));
+                return /* () */0;
+              }));
+        return Jest.testAsync("Cancelation Test", undefined, (function (cb) {
+                      var cancel = Task$Task.run(timeout(100), (function (param) {
+                              if (param.tag) {
+                                return Curry._1(cb, Jest.fail("should not run"));
+                              } else {
+                                return Curry._1(cb, Jest.fail("should not reject"));
+                              }
                             }));
+                      Curry._1(cancel, /* () */0);
+                      setTimeout((function (param) {
+                              return Curry._1(cb, Jest.pass);
+                            }), 110);
                       return /* () */0;
                     }));
       }));
