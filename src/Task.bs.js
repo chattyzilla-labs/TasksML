@@ -6,8 +6,6 @@ var $$Array = require("bs-platform/lib/js/array.js");
 var Block = require("bs-platform/lib/js/block.js");
 var Curry = require("bs-platform/lib/js/curry.js");
 var Queue = require("bs-platform/lib/js/queue.js");
-var Caml_array = require("bs-platform/lib/js/caml_array.js");
-var Pervasives = require("bs-platform/lib/js/pervasives.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
 
 function run(onResponse, param) {
@@ -744,88 +742,6 @@ function sextuple(param) {
             })];
 }
 
-function timeout(value) {
-  return /* Task */[(function (param, res) {
-              var timer = setTimeout((function (param) {
-                      return Curry._1(res, value);
-                    }), 1000);
-              return /* Cancel */[(function (param) {
-                          clearTimeout(timer);
-                          return /* () */0;
-                        })];
-            })];
-}
-
-function notTimeout(value) {
-  return /* Task */[(function (param, res) {
-              Curry._1(res, value);
-              return /* NoCancel */0;
-            })];
-}
-
-var p = map(parallel(Pervasives.$at(List.map(timeout, /* :: */[
-                  1,
-                  /* :: */[
-                    2,
-                    /* :: */[
-                      3,
-                      /* :: */[
-                        4,
-                        /* :: */[
-                          5,
-                          /* :: */[
-                            6,
-                            /* :: */[
-                              7,
-                              /* :: */[
-                                8,
-                                /* :: */[
-                                  9,
-                                  /* [] */0
-                                ]
-                              ]
-                            ]
-                          ]
-                        ]
-                      ]
-                    ]
-                  ]
-                ]), $$Array.to_list($$Array.map(notTimeout, $$Array.mapi((function (index, param) {
-                            return index + 10 | 0;
-                          }), Caml_array.caml_make_vect(10000, 1)))))), (function (param) {
-        return List.fold_left((function (a, b) {
-                      return a + b | 0;
-                    }), 0, param);
-      }));
-
-function makeTask(i) {
-  if (i >= 100000) {
-    var value = /* Done */Block.__(1, [i + 1 | 0]);
-    return /* Task */[(function (param, res) {
-                Curry._1(res, value);
-                return /* NoCancel */0;
-              })];
-  } else if (i < 0) {
-    return /* Task */[(function (rej, param) {
-                Curry._1(rej, "i must be positive");
-                return /* NoCancel */0;
-              })];
-  } else {
-    var value$1 = /* Next */Block.__(0, [i + 1 | 0]);
-    return /* Task */[(function (param, res) {
-                Curry._1(res, value$1);
-                return /* NoCancel */0;
-              })];
-  }
-}
-
-var t = run((function (param) {
-        console.log(param[0]);
-        return /* () */0;
-      }), chain(p, (function (param) {
-            return chainRec(makeTask, param);
-          })));
-
 var bind = chain;
 
 var resolve = pure;
@@ -855,9 +771,4 @@ exports.triple = triple;
 exports.quadruple = quadruple;
 exports.quintuple = quintuple;
 exports.sextuple = sextuple;
-exports.timeout = timeout;
-exports.notTimeout = notTimeout;
-exports.p = p;
-exports.makeTask = makeTask;
-exports.t = t;
-/* p Not a pure module */
+/* No side effect */
