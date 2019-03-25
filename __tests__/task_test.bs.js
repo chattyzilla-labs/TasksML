@@ -2,23 +2,19 @@
 'use strict';
 
 var Jest = require("@glennsl/bs-jest/src/jest.js");
-var List = require("bs-platform/lib/js/list.js");
-var $$Array = require("bs-platform/lib/js/array.js");
 var Block = require("bs-platform/lib/js/block.js");
 var Curry = require("bs-platform/lib/js/curry.js");
 var Task$Task = require("../src/Task.bs.js");
-var Caml_array = require("bs-platform/lib/js/caml_array.js");
-var Pervasives = require("bs-platform/lib/js/pervasives.js");
 
 function timeout(value) {
   return /* Task */[(function (param, res) {
               var timer = setTimeout((function (param) {
                       return Curry._1(res, value);
                     }), value);
-              return /* Cancel */[(function (param) {
-                          clearTimeout(timer);
-                          return /* () */0;
-                        })];
+              return /* Cancel */Block.__(0, [(function (param) {
+                            clearTimeout(timer);
+                            return /* () */0;
+                          })]);
             })];
 }
 
@@ -29,41 +25,6 @@ function notTimeout(value) {
             })];
 }
 
-var p = Task$Task.Operators[/* >>| */1](Task$Task.parallel(Pervasives.$at(List.map(timeout, /* :: */[
-                  1,
-                  /* :: */[
-                    2,
-                    /* :: */[
-                      3,
-                      /* :: */[
-                        4,
-                        /* :: */[
-                          5,
-                          /* :: */[
-                            6,
-                            /* :: */[
-                              7,
-                              /* :: */[
-                                8,
-                                /* :: */[
-                                  9,
-                                  /* [] */0
-                                ]
-                              ]
-                            ]
-                          ]
-                        ]
-                      ]
-                    ]
-                  ]
-                ]), $$Array.to_list($$Array.map(notTimeout, $$Array.mapi((function (index, param) {
-                            return index + 10 | 0;
-                          }), Caml_array.caml_make_vect(10000, 1)))))), (function (param) {
-        return List.fold_left((function (a, b) {
-                      return a + b | 0;
-                    }), 0, param);
-      }));
-
 function makeTask(i) {
   if (i >= 100000) {
     return Task$Task.pure(/* Done */Block.__(1, [i + 1 | 0]));
@@ -73,13 +34,6 @@ function makeTask(i) {
     return Task$Task.pure(/* Next */Block.__(0, [i + 1 | 0]));
   }
 }
-
-var t = Task$Task.Operators[/* >>> */4](Task$Task.Operators[/* >>= */0](p, (function (param) {
-            return Task$Task.chainRec(makeTask, param);
-          })), (function (param) {
-        console.log(param[0]);
-        return /* () */0;
-      }));
 
 Jest.describe("Testing Task", (function (param) {
         Jest.testAsync("basic run", undefined, (function (cb) {
@@ -110,7 +64,5 @@ Jest.describe("Testing Task", (function (param) {
 
 exports.timeout = timeout;
 exports.notTimeout = notTimeout;
-exports.p = p;
 exports.makeTask = makeTask;
-exports.t = t;
-/* p Not a pure module */
+/*  Not a pure module */

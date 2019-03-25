@@ -9,34 +9,104 @@ var Queue = require("bs-platform/lib/js/queue.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
 
 function run(param, onResponse) {
-  var openend = /* record */[/* contents */true];
+  var opened = /* record */[/* contents */true];
+  var cancler = /* record */[/* contents : NoCancel */0];
+  var cancled = /* record */[/* contents */false];
+  var syncVal = /* record */[/* contents */undefined];
+  var async = /* record */[/* contents */false];
   var rejection = function (err) {
-    if (openend[0]) {
-      openend[0] = false;
-      return Curry._1(onResponse, /* Rejection */Block.__(0, [err]));
+    if (opened[0]) {
+      if (async[0]) {
+        var match = cancler[0];
+        if (typeof match !== "number") {
+          if (match.tag) {
+            var fn = match[0];
+            var match$1 = cancled[0];
+            if (match$1) {
+              Curry._1(fn, /* Rejection */Block.__(0, [err]));
+            } else {
+              cancler[0] = /* Cancel */Block.__(0, [(function (param) {
+                      return Curry._1(fn, /* Rejection */Block.__(0, [err]));
+                    })]);
+            }
+          }
+          
+        }
+        
+      } else {
+        syncVal[0] = /* Rejection */Block.__(0, [err]);
+      }
+      if (cancled[0]) {
+        return 0;
+      } else {
+        return Curry._1(onResponse, /* Rejection */Block.__(0, [err]));
+      }
     } else {
       return 0;
     }
   };
   var success = function (res) {
-    if (openend[0]) {
-      openend[0] = false;
-      return Curry._1(onResponse, /* Success */Block.__(1, [res]));
+    if (opened[0]) {
+      if (async[0]) {
+        var match = cancler[0];
+        if (typeof match !== "number") {
+          if (match.tag) {
+            var fn = match[0];
+            var match$1 = cancled[0];
+            if (match$1) {
+              Curry._1(fn, /* Success */Block.__(1, [res]));
+            } else {
+              cancler[0] = /* Cancel */Block.__(0, [(function (param) {
+                      return Curry._1(fn, /* Success */Block.__(1, [res]));
+                    })]);
+            }
+          }
+          
+        }
+        
+      } else {
+        syncVal[0] = /* Success */Block.__(1, [res]);
+      }
+      if (cancled[0]) {
+        return 0;
+      } else {
+        return Curry._1(onResponse, /* Success */Block.__(1, [res]));
+      }
     } else {
       return 0;
     }
   };
-  var cancelFn = Curry._2(param[0], rejection, success);
+  var intermediateCancler = Curry._2(param[0], rejection, success);
+  var match = syncVal[0];
+  if (match !== undefined) {
+    var value = match;
+    if (typeof intermediateCancler === "number" || !intermediateCancler.tag) {
+      cancler[0] = intermediateCancler;
+    } else {
+      var fn = intermediateCancler[0];
+      cancler[0] = /* Cancel */Block.__(0, [(function (param) {
+              return Curry._1(fn, value);
+            })]);
+    }
+  } else {
+    async[0] = true;
+    cancler[0] = intermediateCancler;
+  }
   return (function (param) {
-      if (openend[0]) {
-        openend[0] = false;
-        if (cancelFn) {
-          return Curry._1(cancelFn[0], /* () */0);
-        } else {
-          return /* () */0;
-        }
-      } else {
+      if (cancled[0]) {
         return 0;
+      } else {
+        cancled[0] = true;
+        var match = cancler[0];
+        if (typeof match === "number") {
+          opened[0] = false;
+          return /* () */0;
+        } else if (match.tag) {
+          return /* () */0;
+        } else {
+          opened[0] = false;
+          return Curry._1(match[0], /* () */0);
+        }
       }
     });
 }
@@ -47,10 +117,11 @@ function noop(param) {
 
 function chain(task, fn) {
   return /* Task */[(function (rej, res) {
-              var cancelFn = /* record */[/* contents */noop];
+              var cancelFn1 = /* record */[/* contents */noop];
+              var cancelFn2 = /* record */[/* contents */noop];
               var onResponse = function (status) {
                 if (status.tag) {
-                  cancelFn[0] = run(Curry._1(fn, status[0]), (function (status) {
+                  cancelFn2[0] = run(Curry._1(fn, status[0]), (function (status) {
                           if (status.tag) {
                             return Curry._1(res, status[0]);
                           } else {
@@ -62,10 +133,11 @@ function chain(task, fn) {
                   return Curry._1(rej, status[0]);
                 }
               };
-              cancelFn[0] = run(task, onResponse);
-              return /* Cancel */[(function (param) {
-                          return Curry._1(cancelFn[0], /* () */0);
-                        })];
+              cancelFn1[0] = run(task, onResponse);
+              return /* Cancel */Block.__(0, [(function (param) {
+                            Curry._1(cancelFn1[0], /* () */0);
+                            return Curry._1(cancelFn2[0], /* () */0);
+                          })]);
             })];
 }
 
@@ -108,20 +180,21 @@ function chainRec(recTask, init) {
                 }
               };
               drain(/* () */0);
-              return /* Cancel */[(function (param) {
-                          return Curry._1(cancelFn[0], /* () */0);
-                        })];
+              return /* Cancel */Block.__(0, [(function (param) {
+                            return Curry._1(cancelFn[0], /* () */0);
+                          })]);
             })];
 }
 
 function chainRej(task, fn) {
   return /* Task */[(function (rej, res) {
-              var cancelFn = /* record */[/* contents */noop];
+              var cancelFn1 = /* record */[/* contents */noop];
+              var cancelFn2 = /* record */[/* contents */noop];
               var onResponse = function (status) {
                 if (status.tag) {
                   return Curry._1(res, status[0]);
                 } else {
-                  cancelFn[0] = run(Curry._1(fn, status[0]), (function (status) {
+                  cancelFn2[0] = run(Curry._1(fn, status[0]), (function (status) {
                           if (status.tag) {
                             return Curry._1(res, status[0]);
                           } else {
@@ -131,10 +204,11 @@ function chainRej(task, fn) {
                   return /* () */0;
                 }
               };
-              cancelFn[0] = run(task, onResponse);
-              return /* Cancel */[(function (param) {
-                          return Curry._1(cancelFn[0], /* () */0);
-                        })];
+              cancelFn1[0] = run(task, onResponse);
+              return /* Cancel */Block.__(0, [(function (param) {
+                            Curry._1(cancelFn1[0], /* () */0);
+                            return Curry._1(cancelFn2[0], /* () */0);
+                          })]);
             })];
 }
 
@@ -148,7 +222,7 @@ function map(task, fn) {
                 }
               };
               var cancel = run(task, onResponse);
-              return /* Cancel */[cancel];
+              return /* Cancel */Block.__(0, [cancel]);
             })];
 }
 
@@ -162,7 +236,7 @@ function mapRej(task, fn) {
                 }
               };
               var cancel = run(task, onResponse);
-              return /* Cancel */[cancel];
+              return /* Cancel */Block.__(0, [cancel]);
             })];
 }
 
@@ -176,7 +250,7 @@ function bimap(task, rejMap, resMap) {
                 }
               };
               var cancel = run(task, onResponse);
-              return /* Cancel */[cancel];
+              return /* Cancel */Block.__(0, [cancel]);
             })];
 }
 
@@ -190,16 +264,17 @@ function fold(task, rejMap, resMap) {
                 }
               };
               var cancel = run(task, onResponse);
-              return /* Cancel */[cancel];
+              return /* Cancel */Block.__(0, [cancel]);
             })];
 }
 
 function also(task1, task2) {
   return /* Task */[(function (rej, res) {
-              var cancelFn = /* record */[/* contents */noop];
+              var cancelFn1 = /* record */[/* contents */noop];
+              var cancelFn2 = /* record */[/* contents */noop];
               var onResponse = function (status) {
                 if (status.tag) {
-                  cancelFn[0] = run(task2, (function (status) {
+                  cancelFn2[0] = run(task2, (function (status) {
                           if (status.tag) {
                             return Curry._1(res, status[0]);
                           } else {
@@ -211,21 +286,23 @@ function also(task1, task2) {
                   return Curry._1(rej, status[0]);
                 }
               };
-              cancelFn[0] = run(task1, onResponse);
-              return /* Cancel */[(function (param) {
-                          return Curry._1(cancelFn[0], /* () */0);
-                        })];
+              cancelFn1[0] = run(task1, onResponse);
+              return /* Cancel */Block.__(0, [(function (param) {
+                            Curry._1(cancelFn1[0], /* () */0);
+                            return Curry._1(cancelFn2[0], /* () */0);
+                          })]);
             })];
 }
 
 function alt(task1, task2) {
   return /* Task */[(function (rej, res) {
-              var cancelFn = /* record */[/* contents */noop];
+              var cancelFn1 = /* record */[/* contents */noop];
+              var cancelFn2 = /* record */[/* contents */noop];
               var onResponse = function (status) {
                 if (status.tag) {
                   return Curry._1(res, status[0]);
                 } else {
-                  cancelFn[0] = run(task2, (function (status) {
+                  cancelFn2[0] = run(task2, (function (status) {
                           if (status.tag) {
                             return Curry._1(res, status[0]);
                           } else {
@@ -235,18 +312,20 @@ function alt(task1, task2) {
                   return /* () */0;
                 }
               };
-              cancelFn[0] = run(task1, onResponse);
-              return /* Cancel */[(function (param) {
-                          return Curry._1(cancelFn[0], /* () */0);
-                        })];
+              cancelFn1[0] = run(task1, onResponse);
+              return /* Cancel */Block.__(0, [(function (param) {
+                            Curry._1(cancelFn1[0], /* () */0);
+                            return Curry._1(cancelFn2[0], /* () */0);
+                          })]);
             })];
 }
 
 function $$finally(task1, task2) {
   return /* Task */[(function (rej, res) {
-              var cancelFn = /* record */[/* contents */noop];
+              var cancelFn1 = /* record */[/* contents */noop];
+              var cancelFn2 = /* record */[/* contents */noop];
               var onResponse = function (status1) {
-                cancelFn[0] = run(task2, (function (status) {
+                cancelFn2[0] = run(task2, (function (status) {
                         if (status.tag) {
                           if (status1.tag) {
                             return Curry._1(res, status1[0]);
@@ -259,16 +338,18 @@ function $$finally(task1, task2) {
                       }));
                 return /* () */0;
               };
-              cancelFn[0] = run(task1, onResponse);
-              return /* Cancel */[(function (param) {
-                          return Curry._1(cancelFn[0], /* () */0);
-                        })];
+              cancelFn1[0] = run(task1, onResponse);
+              return /* Cancel */Block.__(0, [(function (param) {
+                            Curry._1(cancelFn1[0], /* () */0);
+                            return Curry._1(cancelFn2[0], /* () */0);
+                          })]);
             })];
 }
 
 function hook(acquire, dispose, consume) {
   return /* Task */[(function (rej, res) {
-              var cancelFn = /* record */[/* contents */noop];
+              var cancelFn1 = /* record */[/* contents */noop];
+              var cancelFn2 = /* record */[/* contents */noop];
               var onAquire = function (status) {
                 if (status.tag) {
                   var resource = status[0];
@@ -293,7 +374,7 @@ function hook(acquire, dispose, consume) {
                     }
                   };
                   var cancelConsumer = run(Curry._1(consume, resource), onResponse);
-                  cancelFn[0] = (function (param) {
+                  cancelFn2[0] = (function (param) {
                       Curry._1(cancelConsumer, /* () */0);
                       runDispose(Curry._1(dispose, resource));
                       return /* () */0;
@@ -303,10 +384,11 @@ function hook(acquire, dispose, consume) {
                   return Curry._1(rej, status[0]);
                 }
               };
-              cancelFn[0] = run(acquire, onAquire);
-              return /* Cancel */[(function (param) {
-                          return Curry._1(cancelFn[0], /* () */0);
-                        })];
+              cancelFn1[0] = run(acquire, onAquire);
+              return /* Cancel */Block.__(0, [(function (param) {
+                            Curry._1(cancelFn1[0], /* () */0);
+                            return Curry._1(cancelFn2[0], /* () */0);
+                          })]);
             })];
 }
 
@@ -346,10 +428,10 @@ function race(task1, task2) {
                         return Curry._1(cancelTask1[0], /* () */0);
                       }
                     }));
-              return /* Cancel */[(function (param) {
-                          Curry._1(cancelTask1[0], /* () */0);
-                          return Curry._1(cancelTask2[0], /* () */0);
-                        })];
+              return /* Cancel */Block.__(0, [(function (param) {
+                            Curry._1(cancelTask1[0], /* () */0);
+                            return Curry._1(cancelTask2[0], /* () */0);
+                          })]);
             })];
 }
 
@@ -368,11 +450,9 @@ function parallel(concurrentTasks) {
                     $$Array.sort((function (a, b) {
                             return a[0] - b[0] | 0;
                           }), responses[0]);
-                    var response = $$Array.to_list($$Array.map((function (prim) {
-                                return prim[1];
-                              }), responses[0]));
-                    hotTask[0] = /* array */[];
-                    return Curry._1(res, response);
+                    return Curry._1(res, $$Array.to_list($$Array.map((function (prim) {
+                                          return prim[1];
+                                        }), responses[0])));
                   } else {
                     return 0;
                   }
@@ -380,7 +460,6 @@ function parallel(concurrentTasks) {
                   $$Array.iter((function (task) {
                           return Curry._1(task[/* cancel */0], /* () */0);
                         }), hotTask[0]);
-                  hotTask[0] = /* array */[];
                   rejected[0] = true;
                   return Curry._1(rej, param[0]);
                 }
@@ -407,11 +486,11 @@ function parallel(concurrentTasks) {
               while(!Queue.is_empty(syncQueue) && !rejected[0]) {
                 onResponse(Queue.take(syncQueue));
               };
-              return /* Cancel */[(function (param) {
-                          return $$Array.iter((function (task) {
-                                        return Curry._1(task[/* cancel */0], /* () */0);
-                                      }), hotTask[0]);
-                        })];
+              return /* Cancel */Block.__(0, [(function (param) {
+                            return $$Array.iter((function (task) {
+                                          return Curry._1(task[/* cancel */0], /* () */0);
+                                        }), hotTask[0]);
+                          })]);
             })];
 }
 
@@ -461,10 +540,10 @@ function both(param) {
               };
               task1Cancel[0] = run(task1, onResponse1);
               task2Cancel[0] = run(task2, onResponse2);
-              return /* Cancel */[(function (param) {
-                          Curry._1(task1Cancel[0], /* () */0);
-                          return Curry._1(task2Cancel[0], /* () */0);
-                        })];
+              return /* Cancel */Block.__(0, [(function (param) {
+                            Curry._1(task1Cancel[0], /* () */0);
+                            return Curry._1(task2Cancel[0], /* () */0);
+                          })]);
             })];
 }
 
@@ -521,10 +600,10 @@ function triple(param) {
                         task2
                       ]), onResponse1);
               task2Cancel[0] = run(task3, onResponse2);
-              return /* Cancel */[(function (param) {
-                          Curry._1(task1Cancel[0], /* () */0);
-                          return Curry._1(task2Cancel[0], /* () */0);
-                        })];
+              return /* Cancel */Block.__(0, [(function (param) {
+                            Curry._1(task1Cancel[0], /* () */0);
+                            return Curry._1(task2Cancel[0], /* () */0);
+                          })]);
             })];
 }
 
@@ -588,10 +667,10 @@ function quadruple(param) {
                         task3,
                         task4
                       ]), onResponse2);
-              return /* Cancel */[(function (param) {
-                          Curry._1(task1Cancel[0], /* () */0);
-                          return Curry._1(task2Cancel[0], /* () */0);
-                        })];
+              return /* Cancel */Block.__(0, [(function (param) {
+                            Curry._1(task1Cancel[0], /* () */0);
+                            return Curry._1(task2Cancel[0], /* () */0);
+                          })]);
             })];
 }
 
@@ -656,10 +735,10 @@ function quintuple(param) {
                         task4
                       ]), onResponse1);
               task2Cancel[0] = run(task5, onResponse2);
-              return /* Cancel */[(function (param) {
-                          Curry._1(task1Cancel[0], /* () */0);
-                          return Curry._1(task2Cancel[0], /* () */0);
-                        })];
+              return /* Cancel */Block.__(0, [(function (param) {
+                            Curry._1(task1Cancel[0], /* () */0);
+                            return Curry._1(task2Cancel[0], /* () */0);
+                          })]);
             })];
 }
 
@@ -728,10 +807,10 @@ function sextuple(param) {
                         task5
                       ]), onResponse1);
               task2Cancel[0] = run(task6, onResponse2);
-              return /* Cancel */[(function (param) {
-                          Curry._1(task1Cancel[0], /* () */0);
-                          return Curry._1(task2Cancel[0], /* () */0);
-                        })];
+              return /* Cancel */Block.__(0, [(function (param) {
+                            Curry._1(task1Cancel[0], /* () */0);
+                            return Curry._1(task2Cancel[0], /* () */0);
+                          })]);
             })];
 }
 

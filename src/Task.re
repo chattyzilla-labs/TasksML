@@ -1,12 +1,13 @@
-type cancel =
-  | NoCancel
-  | Cancel(unit => unit);
-
 type status('r, 's) =
   | Rejection('r)
   | Success('s);
 
-type computation('error, 'value) = ('error => unit, 'value => unit) => cancel;
+type cleanup('error, 'value) =
+  | NoCancel
+  | Cancel(unit => unit)
+  | Undo(status('error, 'value) => unit)
+
+type computation('error, 'value) = ('error => unit, 'value => unit) => cleanup('error, 'value);
 
 type task('rej, 'res) =
   | Task(computation('rej, 'res));
@@ -22,24 +23,73 @@ type interator('a, 'b) =
 
 
 let run = (Task(task), onResponse) => {
-  let openend = ref(true);
-  let rejection = err =>
-    if (openend^) {
-      openend := false;
-      onResponse(Rejection(err));
-    };
-  let success = res =>
-    if (openend^) {
-      openend := false;
-      onResponse(Success(res));
-    };
-  let cancelFn = task(rejection, success);
+  let opened = ref(true);
+  let cancler = ref(NoCancel)
+  let cancled = ref(false)
+  let syncVal = ref(None)
+  let async = ref(false)
+
+  let rejection = err => {
+    if (opened^) {
+      if(async^){
+        switch cancler^ {
+        | Undo(fn) => {
+            cancled^ ? fn(Rejection(err)) : cancler := Cancel(() => fn(Rejection(err)))
+          }
+        | Cancel(_) => ()
+        | NoCancel => ()
+        };
+      }
+      else {
+        syncVal := Some(Rejection(err))
+      }
+      if(!cancled^)
+        onResponse(Rejection(err));
+    }
+  }
+
+  let success = res => {
+   if (opened^) {
+      if(async^){
+        switch cancler^ {
+        | Undo(fn) => {
+            cancled^ ? fn(Success(res)) : cancler := Cancel(() => fn(Success(res)))
+          }
+        | Cancel(_) => ()
+        | NoCancel => ()
+        };
+      }
+      else {
+        syncVal := Some(Success(res))
+      }
+      if(!cancled^)
+        onResponse(Success(res));
+    }
+  }
+
+  let intermediateCancler = task(rejection, success);
+
+  switch syncVal^ {
+  | None => {
+      async := true
+      cancler := intermediateCancler
+    }
+  | Some(value) => {
+      switch intermediateCancler {
+      | Cancel(_) => { cancler := intermediateCancler; }
+      | NoCancel => { cancler := intermediateCancler; }
+      | Undo(fn) => { cancler := Cancel(() => fn(value)) }
+      };
+    }
+  };
+
   () =>
-    if (openend^) {
-      openend := false;
-      switch (cancelFn) {
-      | Cancel(fn) => fn()
-      | NoCancel => ()
+    if (!cancled^) {
+      cancled := true;
+      switch (cancler^) {
+      | Cancel(fn) => { opened := false; fn() }
+      | NoCancel => { opened := false; ()}
+      | Undo(_) => ()
       };
     };
 };
@@ -49,12 +99,13 @@ let noop = () => ()
 let chain = (task, fn) =>
   Task(
     (rej, res) => {
-      let cancelFn = ref(noop);
+      let cancelFn1 = ref(noop);
+      let cancelFn2 = ref(noop);
       let onResponse = status =>
         switch (status) {
         | Rejection(err) => rej(err)
         | Success(value) =>
-          cancelFn :=
+          cancelFn2 :=
             fn(value)
             -> run(status =>
                  switch (status) {
@@ -63,8 +114,8 @@ let chain = (task, fn) =>
                  }
                )
         };
-      cancelFn := task -> run(onResponse);
-      Cancel(() => cancelFn^());
+      cancelFn1 := task -> run(onResponse);
+      Cancel(() => { cancelFn1^(); cancelFn2^(); });
     },
   );
 
@@ -113,11 +164,12 @@ let chainRec = (recTask, init) =>
 let chainRej = (task, fn) =>
   Task(
     (rej, res) => {
-      let cancelFn = ref(noop);
+      let cancelFn1 = ref(noop);
+      let cancelFn2 = ref(noop);
       let onResponse = status =>
         switch (status) {
         | Rejection(err) =>
-          cancelFn :=
+          cancelFn2 :=
             fn(err)
             -> run(status =>
                  switch (status) {
@@ -127,8 +179,8 @@ let chainRej = (task, fn) =>
                )
         | Success(value) => res(value)
         };
-      cancelFn := task -> run(onResponse);
-      Cancel(() => cancelFn^());
+      cancelFn1 := task -> run(onResponse);
+      Cancel(() => { cancelFn1^(); cancelFn2^(); });
     },
   );
 
@@ -187,12 +239,13 @@ let fold = (task, rejMap, resMap) =>
 let also = (task1, task2) =>
   Task(
     (rej, res) => {
-      let cancelFn = ref(noop);
+      let cancelFn1 = ref(noop);
+      let cancelFn2 = ref(noop);
       let onResponse = status =>
         switch (status) {
         | Rejection(err) => rej(err)
         | Success(_) =>
-          cancelFn :=
+          cancelFn2 :=
             task2
             -> run(status =>
                  switch (status) {
@@ -201,20 +254,21 @@ let also = (task1, task2) =>
                  }
                )
         };
-      cancelFn := task1 -> run(onResponse);
-      Cancel(() => cancelFn^());
+      cancelFn1 := task1 -> run(onResponse);
+      Cancel(() => { cancelFn1^(); cancelFn2^(); });
     },
   );
 
 let alt = (task1, task2) =>
   Task(
     (rej, res) => {
-      let cancelFn = ref(noop);
+      let cancelFn1 = ref(noop);
+      let cancelFn2 = ref(noop);
       let onResponse = status =>
         switch (status) {
         | Success(value) => res(value)
         | Rejection(_) =>
-          cancelFn :=
+          cancelFn2 :=
             task2
             -> run(status =>
                  switch (status) {
@@ -223,17 +277,18 @@ let alt = (task1, task2) =>
                  }
                )
         };
-      cancelFn := task1 -> run(onResponse);
-      Cancel(() => cancelFn^());
+      cancelFn1 := task1 -> run(onResponse);
+      Cancel(() => { cancelFn1^(); cancelFn2^(); });
     },
   );
 
 let finally = (task1, task2) =>
   Task(
     (rej, res) => {
-      let cancelFn = ref(noop);
+      let cancelFn1 = ref(noop);
+      let cancelFn2 = ref(noop);
       let onResponse = status1 => {
-        cancelFn :=
+        cancelFn2 :=
           task2
           -> run(status =>
                 switch (status) {
@@ -246,15 +301,16 @@ let finally = (task1, task2) =>
                 }
               )
       }
-      cancelFn := task1 -> run(onResponse);
-      Cancel(() => cancelFn^());
+      cancelFn1 := task1 -> run(onResponse);
+      Cancel(() => { cancelFn1^(); cancelFn2^(); });
     },
   );
 
 let hook = (acquire, dispose, consume) =>
   Task(
     (rej, res) => {
-      let cancelFn = ref(noop)
+      let cancelFn1 = ref(noop);
+      let cancelFn2 = ref(noop);
       let onAquire = status =>
         switch status {
         | Rejection(err) => rej(err)
@@ -272,14 +328,14 @@ let hook = (acquire, dispose, consume) =>
                 }
               };
             let cancelConsumer = consume(resource) -> run(onResponse)
-            cancelFn := () => {
+            cancelFn2 := () => {
               cancelConsumer()
               dispose(resource) -> runDispose |> ignore
             }
           }
         };
-      cancelFn := acquire -> run(onAquire)
-      Cancel(() => cancelFn^())
+      cancelFn1 := acquire -> run(onAquire)
+      Cancel(() => { cancelFn1^(); cancelFn2^(); });
     }
   )
 
@@ -336,13 +392,11 @@ let parallel = concurrentTasks =>
             if (Array.length(responses^) === taskSize) {
               responses^ |> Array.sort((a, b) => fst(a) - fst(b));
               let response = responses^ |> Array.map(snd) |> Array.to_list;
-              hotTask := [||];
               res(response);
             };
           }
         | Rejection(err) => {
             hotTask^ |> Array.iter(task => task.cancel());
-            hotTask := [||];
             rejected := true;
             rej(err);
           };
@@ -598,9 +652,9 @@ let sextuple = ((task1, task2, task3, task4, task5, task6)) =>
               task2Res := Some(value)
             }
           | Some(task1Value) => {
-            let (a,b,c,d, e) = task1Value
-            res((a, b, c, d, e, value))
-          }
+              let (a,b,c,d, e) = task1Value
+              res((a, b, c, d, e, value))
+            }
           }
         | Rejection(err) => {
             task1Cancel^()
@@ -623,4 +677,5 @@ module Operators = {
   let (>>|!) = mapRej;
   let (>>>) = run;
 };
+
 
