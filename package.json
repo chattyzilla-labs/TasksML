@@ -1,6 +1,6 @@
 {
-  "name": "task",
-  "version": "0.1.0",
+  "name": "tasks-ml",
+  "version": "0.1.1",
   "scripts": {
     "build": "bsb -make-world",
     "start": "bsb -make-world -w",
@@ -8,18 +8,33 @@
     "test": "npm run build && jest --coverage",
     "coverage": "nyc report --temp-directory=coverage --reporter=text-lcov | coveralls"
   },
+  "files": [
+    "src/Task.re",
+    "src/TaskJs.re",
+    "bsconfig.json",
+    "README.md"
+  ],
   "keywords": [
-    "BuckleScript"
+    "BuckleScript",
+    "Reason",
+    "Async",
+    "Functional Programming"
   ],
   "author": "",
   "license": "MIT",
   "devDependencies": {
     "@glennsl/bs-jest": "^0.4.8",
-    "bs-platform": "^4.0.18",
     "coveralls": "^3.0.3",
-    "nyc": "^13.3.0"
+    "nyc": "^13.3.0",
+    "reason-cli": "^3.3.3-macos-1",
+    "bs-platform": "^4.0.18"
   },
-  "dependencies": {
-    "reason-cli": "^3.3.3-macos-1"
+  "peerDependencies": {
+    "bs-platform": ">= 4.0.18"
+  },
+  "dependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dakotamurphyucf/TasksML.git"
   }
 }

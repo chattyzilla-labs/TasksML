@@ -4,7 +4,7 @@
 var Jest = require("@glennsl/bs-jest/src/jest.js");
 var Block = require("bs-platform/lib/js/block.js");
 var Curry = require("bs-platform/lib/js/curry.js");
-var Task$Task = require("../src/Task.bs.js");
+var Task$ReasonTask = require("../src/Task.bs.js");
 
 function timeout(value) {
   return /* Task */[(function (param, res) {
@@ -27,11 +27,11 @@ function notTimeout(value) {
 
 function makeTask(i) {
   if (i >= 100000) {
-    return Task$Task.pure(/* Done */Block.__(1, [i + 1 | 0]));
+    return Task$ReasonTask.pure(/* Done */Block.__(1, [i + 1 | 0]));
   } else if (i < 0) {
-    return Task$Task.reject("i must be positive");
+    return Task$ReasonTask.reject("i must be positive");
   } else {
-    return Task$Task.pure(/* Next */Block.__(0, [i + 1 | 0]));
+    return Task$ReasonTask.pure(/* Next */Block.__(0, [i + 1 | 0]));
   }
 }
 
@@ -41,13 +41,13 @@ Jest.describe("Testing Task", (function (param) {
                       Curry._1(res, 10);
                       return /* NoCancel */0;
                     })];
-                Task$Task.run(simpleTask, (function (status) {
+                Task$ReasonTask.run(simpleTask, (function (status) {
                         return Curry._1(cb, Jest.Expect[/* toEqual */12](/* Success */Block.__(1, [10]), Jest.Expect[/* expect */0](status)));
                       }));
                 return /* () */0;
               }));
         return Jest.testAsync("Cancelation Test", undefined, (function (cb) {
-                      var cancel = Task$Task.run(timeout(100), (function (param) {
+                      var cancel = Task$ReasonTask.run(timeout(100), (function (param) {
                               if (param.tag) {
                                 return Curry._1(cb, Jest.fail("should not run"));
                               } else {

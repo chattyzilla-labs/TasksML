@@ -21,7 +21,6 @@ type interator('a, 'b) =
   | Next('a)
   | Done('b);
 
-
 let run = (Task(task), onResponse) => {
   let opened = ref(true);
   let cancler = ref(NoCancel)

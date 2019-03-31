@@ -1,5 +1,5 @@
 open Task
-let encaseP = (promiseFn, param) => 
+let encaseP = (promiseFn, param) =>
   Task(
     (rej, res) => {
       promiseFn(param) |> Js.Promise.then_(
@@ -8,7 +8,7 @@ let encaseP = (promiseFn, param) =>
       NoCancel
     }
   )
-let encaseP2 = (promiseFn, param1, param2) => 
+let encaseP2 = (promiseFn, param1, param2) =>
   Task(
     (rej, res) => {
       promiseFn(param1, param2) |> Js.Promise.then_(
@@ -18,7 +18,7 @@ let encaseP2 = (promiseFn, param1, param2) =>
     }
   )
 
-let encaseP3 = (promiseFn, param1, param2, param3) => 
+let encaseP3 = (promiseFn, param1, param2, param3) =>
   Task(
     (rej, res) => {
       promiseFn(param1, param2, param3) |> Js.Promise.then_(
@@ -28,9 +28,9 @@ let encaseP3 = (promiseFn, param1, param2, param3) =>
     }
   )
 
-let toPromise = task => 
+let toPromise = task =>
   Js.Promise.make(
-    (~resolve, ~reject as _) => 
+    (~resolve, ~reject as _) =>
       task -> run(value => resolve(. value)) |> ignore
   )
 
