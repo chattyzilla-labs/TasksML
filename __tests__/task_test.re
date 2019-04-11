@@ -17,16 +17,16 @@ let notTimeout = value =>
       NoCancel;
     },
   );
-// let p =
-//   ([1, 2, 3, 4, 5, 6, 7, 8, 9] |> List.map(timeout))
-//   @ (
-//     Array.make(10000, 1)
-//     |> Array.mapi((index, _) => index + 10)
-//     |> Array.map(notTimeout)
-//     |> Array.to_list
-//   )
-//   |> parallel
-//   >>| List.fold_left((a, b) => a + b, 0)
+let p =
+  ([1, 2, 3, 4, 5, 6, 7, 8, 9] |> List.map(timeout))
+  @ (
+    Array.make(10000, 1)
+    |> Array.mapi((index, _) => index + 10)
+    |> Array.map(notTimeout)
+    |> Array.to_list
+  )
+  |> parallel
+  >>| List.fold_left((a, b) => a + b, 0)
 
 let makeTask = i =>
   switch (i) {
@@ -35,17 +35,17 @@ let makeTask = i =>
   | i => pure(Next(i + 1))
   };
 
-// let t =
-//   p
-//   >>= chainRec(makeTask)
-//   >>| (m => m + 10)
-//   >>= (m => pure(m + 100))
-//   >>|! (_ => 100)
-//   >>= reject
-//   >>=! (m => pure(m + 100))
-//   >>> fun
-//        | Rejection(v) => Js.log(v)
-//        | Success(s) => Js.log(s)
+let t =
+  p
+  >>= chainRec(makeTask)
+  >>| (m => m + 10)
+  >>= (m => pure(m + 100))
+  >>|! (_ => 100)
+  >>= reject
+  >>=! (m => pure(m + 100))
+  >>> fun
+       | Rejection(v) => Js.log(v)
+       | Success(s) => Js.log(s)
 
 let () =
 

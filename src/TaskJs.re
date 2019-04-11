@@ -42,6 +42,29 @@ let after = (wait, value) =>
     }
   )
 
+// useful when interfacing with a function on the js side and want to convert it to a Task on the reason side
+let encaseCB = (cb, input) =>
+    Task(
+      (rej, res) => {
+        let cancelFn = cb(input, rej, res);
+        switch (Js.Nullable.toOption(cancelFn)) {
+        | Some(fn) => Cancel(fn)
+        | None => NoCancel
+        };
+      }
+    )
+
+let encaseRevokableCB = (cb, input) =>
+  Task(
+    (rej, res) => {
+      let cancelFn = cb(input, rej, res);
+      switch (Js.Nullable.toOption(cancelFn)) {
+      | Some(fn) => Undo(fn)
+      | None => NoCancel
+      };
+    },
+  );
+
 let rejectAfter = (wait, value) =>
   Task(
     (rej, _) => {
