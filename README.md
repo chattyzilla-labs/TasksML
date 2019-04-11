@@ -1,7 +1,5 @@
 # TasksML
 
-
-
 TasksML offers a system similar to Promises, Tasks, etc. We call them tasks.
 Like promises, tasks represent the result stemming from the success or failure of an asynchronous call (Input/output). Tasks are lazy.
 
@@ -35,8 +33,8 @@ For more information:
 
 ## Usage
 
-
 ### Open Module
+
 TasksML is written as modular reasonML. In reasonML modules are like mini files! They can contain type definitions, let bindings, nested modules, etc. A module's contents (including types!) can be accessed much like a record's, using the . notation. This demonstrates modules' utility for namespacing. Constantly referring to a value/type in a module can be tedious. Instead, we can "open" a module and refer to its contents without always prepending them with the module's name.
 
 ```reason
@@ -46,6 +44,7 @@ let timeout = value => Task((rej, res) => {
   Cancel(() => Js.Global.clearTimeout(timer))
 })
 ```
+
 ## Creating Tasks
 
 ### Tasks
@@ -61,6 +60,7 @@ let timeout = value => Task((rej, res) => {
 ```
 
 ### Reject
+
 Creates a task which immediately rejects with the given value.
 
 ```reason
@@ -76,6 +76,7 @@ sampleReject |> run (
 ```
 
 ### Identity
+
 Creates a task which immediately resolves with the given value
 
 ```reason
@@ -90,3 +91,4 @@ sampleReject |> run (
 //! "Success Case! Sample resolve text!"
 ```
 
+Note: The Compiled Javascript is located in the lib/js folder

@@ -2,12 +2,12 @@ type status('r, 's) =
   | Rejection('r)
   | Success('s);
 
-type cleanup('error, 'value) =
+type cleanup('value) =
   | NoCancel
   | Cancel(unit => unit)
-  | Undo(status('error, 'value) => unit)
+  | Undo('value => unit)
 
-type computation('error, 'value) = ('error => unit, 'value => unit) => cleanup('error, 'value);
+type computation('error, 'value) = ('error => unit, 'value => unit) => cleanup('value);
 
 type task('rej, 'res) =
   | Task(computation('rej, 'res));
@@ -30,20 +30,9 @@ let run = (Task(task), onResponse) => {
 
   let rejection = err => {
     if (opened^) {
-      if(async^){
-        switch cancler^ {
-        | Undo(fn) => {
-            cancled^ ? fn(Rejection(err)) : cancler := Cancel(() => fn(Rejection(err)))
-          }
-        | Cancel(_) => ()
-        | NoCancel => ()
-        };
-      }
-      else {
-        syncVal := Some(Rejection(err))
-      }
-      if(!cancled^)
+      if(!cancled^) {
         onResponse(Rejection(err));
+      }
     }
   }
 
@@ -52,14 +41,14 @@ let run = (Task(task), onResponse) => {
       if(async^){
         switch cancler^ {
         | Undo(fn) => {
-            cancled^ ? fn(Success(res)) : cancler := Cancel(() => fn(Success(res)))
+            cancled^ ? fn(res) : cancler := Cancel(() => fn(res))
           }
         | Cancel(_) => ()
         | NoCancel => ()
         };
       }
       else {
-        syncVal := Some(Success(res))
+        syncVal := Some(res)
       }
       if(!cancled^)
         onResponse(Success(res));

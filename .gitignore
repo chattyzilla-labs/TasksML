@@ -4,7 +4,8 @@
 npm-debug.log
 /lib/bs/
 /lib/es6/
+/src/*.js
+/src/index.js
 /node_modules/
 coverage
-*.bs.js
 package-lock.json
