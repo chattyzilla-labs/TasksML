@@ -1,6 +1,6 @@
 {
   "name": "tasks-ml",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "scripts": {
     "build": "bsb -make-world",
     "start": "bsb -make-world -w",
@@ -33,7 +33,9 @@
   "peerDependencies": {
     "bs-platform": ">= 4.0.18"
   },
-  "dependencies": {},
+  "dependencies": {
+    "ramda": "^0.26.1"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/dakotamurphyucf/TasksML.git"
